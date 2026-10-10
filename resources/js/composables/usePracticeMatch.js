@@ -1,6 +1,7 @@
 import { onBeforeUnmount, reactive, ref, shallowRef } from 'vue';
 import { Game } from '../engine/game.js';
 import { DIFFICULTIES, chooseMove } from '../engine/bot.js';
+import { sfx } from '../lib/sound';
 
 /**
  * An offline match against the bot: two local Games on the same seed that
@@ -24,11 +25,14 @@ export function usePracticeMatch() {
         const settings = DIFFICULTIES[difficulty];
 
         const send = (target, attack) => {
-            if (attack > 0) target.receiveGarbage({ id: ++garbageId, lines: attack, hole: Math.floor(Math.random() * 10) });
+            if (attack <= 0) return;
+            target.receiveGarbage({ id: ++garbageId, lines: attack, hole: Math.floor(Math.random() * 10) });
+            if (target === game.value) sfx.incoming();
         };
         const end = (who) => {
             if (status.value === 'finished') return;
             winner.value = who;
+            who === 'you' ? sfx.win() : sfx.lose();
             status.value = 'finished';
             game.value.stop();
             bot.value.stop();
@@ -39,6 +43,7 @@ export function usePracticeMatch() {
             seed,
             onLock: (lock, outcome) => {
                 Object.assign(stats.you, { score: outcome.state.score, lines: outcome.state.lines, sent: stats.you.sent + outcome.attack });
+                sfx.lock(outcome.cleared.length);
                 send(bot.value, outcome.attack);
             },
             onTopOut: () => end('bot'),
@@ -59,9 +64,11 @@ export function usePracticeMatch() {
 
         status.value = 'countdown';
         countdown.value = 3;
+        sfx.countdownTick();
         const countdownTimer = setInterval(() => {
             countdown.value--;
-            if (countdown.value > 0) return;
+            if (countdown.value > 0) return sfx.countdownTick();
+            sfx.countdownTick(true);
             clearInterval(countdownTimer);
             status.value = 'playing';
             you.start();

@@ -1,6 +1,7 @@
 <script setup>
 import { useRouter } from 'vue-router';
 import { logout, session } from './lib/session';
+import { sound, toggleMuted } from './lib/sound';
 
 const router = useRouter();
 
@@ -26,6 +27,17 @@ async function signOut() {
                     <RouterLink to="/practice" class="hover:text-white" active-class="text-white">Practice</RouterLink>
                 </div>
                 <div class="ml-auto flex items-center gap-3 text-sm">
+                    <button
+                        type="button"
+                        class="rounded px-1.5 py-0.5 text-slate-400 hover:text-white"
+                        :aria-pressed="sound.muted"
+                        :title="sound.muted ? 'Sound off' : 'Sound on'"
+                        data-testid="toggle-sound"
+                        @click="toggleMuted"
+                    >
+                        <span aria-hidden="true">{{ sound.muted ? '🔇' : '🔊' }}</span>
+                        <span class="sr-only">{{ sound.muted ? 'Turn sound on' : 'Turn sound off' }}</span>
+                    </button>
                     <template v-if="session.user">
                         <RouterLink :to="`/players/${session.user.name}`" class="font-medium hover:text-cyan-300" data-testid="nav-user">
                             {{ session.user.name }}

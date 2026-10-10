@@ -5,6 +5,7 @@ import { session } from '../lib/session';
 import { Game } from '../engine/game.js';
 import { deserialize, emptyBoard, serialize } from '../engine/board.js';
 import { chooseMove } from '../engine/bot.js';
+import { sfx } from '../lib/sound';
 
 const ABANDON_AFTER_MS = 20000;
 const WHISPER_INTERVAL_MS = 80;
@@ -99,8 +100,11 @@ export function useOnlineMatch(matchId, { autopilot = false } = {}) {
         status.value = 'countdown';
         const tick = () => {
             const remaining = startsAt - serverNow();
-            countdown.value = Math.max(0, Math.ceil(remaining / 1000));
+            const seconds = Math.max(0, Math.ceil(remaining / 1000));
+            if (seconds !== countdown.value && seconds > 0) sfx.countdownTick();
+            countdown.value = seconds;
             if (remaining <= 0 && status.value === 'countdown') {
+                sfx.countdownTick(true);
                 clearInterval(timer);
                 status.value = 'playing';
                 game.value.start();
@@ -137,7 +141,10 @@ export function useOnlineMatch(matchId, { autopilot = false } = {}) {
                 });
             })
             .listen('.garbage.sent', (e) => {
-                if (e.from_user_id !== session.user.id) game.value?.receiveGarbage(e.batch);
+                if (e.from_user_id !== session.user.id) {
+                    game.value?.receiveGarbage(e.batch);
+                    sfx.incoming();
+                }
             })
             .listen('.match.ended', (e) => finish(e.match))
             .listenForWhisper('piece', (piece) => {
@@ -154,6 +161,7 @@ export function useOnlineMatch(matchId, { autopilot = false } = {}) {
         stats.score = outcome.state.score;
         stats.lines = outcome.state.lines;
         stats.sent += outcome.attack;
+        if (!autopilot) sfx.lock(outcome.cleared.length);
         queue.push({
             piece_number: pieceNumber,
             piece: lock.piece,
@@ -226,6 +234,8 @@ export function useOnlineMatch(matchId, { autopilot = false } = {}) {
     }
 
     function finish(finalMatch) {
+        const wasLive = status.value !== 'loading' && status.value !== 'finished';
+        if (wasLive) finalMatch.winner_id === session.user?.id ? sfx.win() : sfx.lose();
         game.value?.stop();
         match.value = finalMatch;
         result.value = finalMatch;
