@@ -7,6 +7,7 @@ use App\Game\Randomizer;
 use App\Models\GameMatch;
 use App\Models\MatchPlayer;
 use App\Models\User;
+use App\Services\BotDriver;
 use App\Services\Matchmaker;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
@@ -76,6 +77,19 @@ class BotMatchTest extends TestCase
         $this->assertFalse($bot->topped_out);
         $this->assertSame($bot->pieces, $bot->moves()->count());
         $this->assertFalse($match->fresh()->isFinished());
+    }
+
+    public function test_a_failure_in_one_bot_match_does_not_stop_the_others(): void
+    {
+        [, $broken] = $this->botMatch('medium');
+        [, $healthy] = $this->botMatch('hard');
+        $broken->update(['board' => 'not a board']);
+        $this->travel(1)->seconds();
+
+        $this->assertSame(1, app(BotDriver::class)->tick());
+
+        $this->assertSame(0, $broken->fresh()->pieces);
+        $this->assertSame(1, $healthy->fresh()->pieces);
     }
 
     public function test_the_bot_raises_incoming_garbage(): void

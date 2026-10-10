@@ -33,7 +33,8 @@ class BotDriver
             ->with(['user', 'gameMatch'])
             ->get();
 
-        return $bots->filter(fn (MatchPlayer $bot) => $this->play($bot))->count();
+        // One bot's failure (a database hiccup, say) must not stop the others or the daemon.
+        return $bots->filter(fn (MatchPlayer $bot) => rescue(fn () => $this->play($bot), false))->count();
     }
 
     private function play(MatchPlayer $bot): bool
