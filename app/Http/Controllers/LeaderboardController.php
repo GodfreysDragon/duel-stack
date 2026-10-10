@@ -20,6 +20,7 @@ class LeaderboardController extends Controller
         $validated = $request->validate(['sort' => ['sometimes', Rule::in(['rating', 'best_score'])]]);
 
         $users = User::query()
+            ->humans()
             ->where('games_played', '>', 0)
             ->orderByDesc($validated['sort'] ?? 'rating')
             ->orderBy('id')

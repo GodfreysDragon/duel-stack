@@ -114,6 +114,54 @@ final class Board
         return [new self([...array_slice($this->rows, $lines), ...array_fill(0, $lines, $garbageRow)]), $overflow];
     }
 
+    /**
+     * The row a piece would come to rest on if dropped straight down from ($x, $y).
+     */
+    public function dropY(string $type, int $rotation, int $x, int $y): int
+    {
+        while ($this->fits($type, $rotation, $x, $y + 1)) {
+            $y++;
+        }
+
+        return $y;
+    }
+
+    /**
+     * Height of each column's highest block (0 for an empty column).
+     *
+     * @return list<int>
+     */
+    public function columnHeights(): array
+    {
+        $heights = [];
+        for ($x = 0; $x < self::WIDTH; $x++) {
+            $y = 0;
+            while ($y < self::HEIGHT && $this->rows[$y][$x] === self::EMPTY) {
+                $y++;
+            }
+            $heights[] = self::HEIGHT - $y;
+        }
+
+        return $heights;
+    }
+
+    /**
+     * Empty cells with a block somewhere above them in the same column.
+     */
+    public function holes(): int
+    {
+        $holes = 0;
+        foreach ($this->columnHeights() as $x => $height) {
+            for ($y = self::HEIGHT - $height + 1; $y < self::HEIGHT; $y++) {
+                if ($this->rows[$y][$x] === self::EMPTY) {
+                    $holes++;
+                }
+            }
+        }
+
+        return $holes;
+    }
+
     public function isEmpty(): bool
     {
         return trim($this->toString(), self::EMPTY) === '';

@@ -5,6 +5,8 @@ namespace App\Models;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
+use Illuminate\Database\Eloquent\Attributes\Scope;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -49,6 +51,23 @@ class User extends Authenticatable
     public function matchPlayers(): HasMany
     {
         return $this->hasMany(MatchPlayer::class);
+    }
+
+    /**
+     * One of the house bots (see App\Services\BotRoster).
+     */
+    public function isBot(): bool
+    {
+        return $this->bot_level !== null;
+    }
+
+    /**
+     * @param  Builder<User>  $query
+     */
+    #[Scope]
+    protected function humans(Builder $query): void
+    {
+        $query->whereNull('bot_level');
     }
 
     /**

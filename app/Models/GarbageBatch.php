@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Attributes\DateFormat;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -9,6 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 /**
  * Garbage rows sent to a player, waiting to rise into their board.
  */
+#[DateFormat('Y-m-d H:i:s.v')]
 #[Fillable(['target_player_id', 'lines', 'hole', 'applied_at_piece', 'created_at'])]
 class GarbageBatch extends Model
 {

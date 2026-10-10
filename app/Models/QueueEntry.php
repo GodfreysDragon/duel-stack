@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Attributes\DateFormat;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -9,6 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 /**
  * A player waiting in the matchmaking queue.
  */
+#[DateFormat('Y-m-d H:i:s.v')]
 #[Fillable(['user_id', 'rating', 'joined_at', 'last_seen_at'])]
 class QueueEntry extends Model
 {

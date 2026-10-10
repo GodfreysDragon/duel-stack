@@ -47,12 +47,19 @@ class MatchFinisher
         DB::afterCommit(fn () => MatchEnded::dispatch($match->fresh(['players.user'])));
     }
 
+    /**
+     * The rating change is applied relative to the user's current rating: bots play many matches at once, so the
+     * rating may have moved since this match's rating_before.
+     */
     private function record(MatchPlayer $player, int $newRating, bool $won): void
     {
         $player->update(['rating_after' => $newRating]);
 
+        $delta = $newRating - $player->rating_before;
+        $adjusted = 'rating '.($delta < 0 ? '- '.abs($delta) : '+ '.$delta);
+
         User::query()->whereKey($player->user_id)->update([
-            'rating' => $newRating,
+            'rating' => DB::raw("CASE WHEN {$adjusted} < ".Elo::FLOOR.' THEN '.Elo::FLOOR." ELSE {$adjusted} END"),
             'games_played' => DB::raw('games_played + 1'),
             $won ? 'wins' : 'losses' => DB::raw(($won ? 'wins' : 'losses').' + 1'),
             'total_lines' => DB::raw('total_lines + '.(int) $player->lines),

@@ -12,8 +12,10 @@ import { refreshSession, session } from '../lib/session';
 const props = defineProps({ id: { type: String, required: true } });
 const route = useRoute();
 
-// ?autopilot=1 lets the bot play this side of a real match (used by the end-to-end test).
-const online = useOnlineMatch(Number(props.id), { autopilot: route.query.autopilot === '1' });
+// ?autopilot=1 lets the bot play this side of a real match, for the end-to-end test. It is compiled out of
+// production builds; the server cannot tell a bot-driven client apart anyway (see README, "Security model").
+const allowAutopilot = import.meta.env.DEV || import.meta.env.VITE_E2E_AUTOPILOT === 'true';
+const online = useOnlineMatch(Number(props.id), { autopilot: allowAutopilot && route.query.autopilot === '1' });
 const { status, error, result, countdown, me, opponent, opp, stats, game, frame } = online;
 
 useKeyboard(() => game.value);
@@ -44,6 +46,7 @@ function confirmForfeit() {
                     :lines="opp.lines"
                     :sent="opp.sent"
                     :online="opp.online"
+                    :bot="opponent.user.is_bot"
                     align="right"
                 />
             </div>

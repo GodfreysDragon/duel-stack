@@ -10,7 +10,7 @@ const POLL_MS = 2000;
 const router = useRouter();
 const searching = ref(true);
 const waited = ref(0);
-const info = ref({ players_waiting: 1, rating_window: 150 });
+const info = ref({ players_waiting: 1, rating_window: 150, bot_in: 15 });
 const error = ref(null);
 let poll = null;
 let clock = null;
@@ -68,7 +68,11 @@ onBeforeUnmount(() => {
             {{ waited }}s · {{ info.players_waiting }} in queue · matching ±{{ info.rating_window }} around
             <span class="font-mono text-slate-200">{{ session.user.rating }}</span>
         </p>
-        <p class="mt-1 text-sm text-slate-500">The rating range widens the longer you wait.</p>
+        <p class="mt-1 text-sm text-slate-500">
+            The rating range widens the longer you wait.
+            <template v-if="info.bot_in > 0">If nobody turns up, a house bot takes you on in {{ info.bot_in }}s.</template>
+            <template v-else>Pairing you with a house bot…</template>
+        </p>
         <p v-if="error" class="mt-4 text-sm text-red-400">{{ error }}</p>
         <div class="mt-8 flex justify-center gap-3">
             <button type="button" class="rounded-lg border border-slate-700 px-5 py-2 hover:bg-slate-900" @click="cancel">Cancel</button>

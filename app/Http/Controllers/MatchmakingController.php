@@ -32,6 +32,7 @@ class MatchmakingController extends Controller
             'status' => 'searching',
             'players_waiting' => QueueEntry::query()->count(),
             'rating_window' => $entry !== null ? $matchmaker->window($entry) : Matchmaker::BASE_WINDOW,
+            'bot_in' => $entry !== null ? $matchmaker->secondsUntilBot($entry) : Matchmaker::BOT_AFTER_SECONDS,
         ]);
     }
 

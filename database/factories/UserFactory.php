@@ -38,6 +38,14 @@ class UserFactory extends Factory
     }
 
     /**
+     * One of the house bots (see App\Services\BotRoster).
+     */
+    public function bot(string $level = 'medium'): static
+    {
+        return $this->state(fn (array $attributes) => ['bot_level' => $level]);
+    }
+
+    /**
      * A player with some finished games behind them.
      */
     public function veteran(): static

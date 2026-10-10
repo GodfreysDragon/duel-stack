@@ -15,8 +15,8 @@ class PlayerController extends Controller
      */
     public function show(User $user): JsonResponse
     {
-        $rank = $user->games_played > 0
-            ? User::query()->where('games_played', '>', 0)->where('rating', '>', $user->rating)->count() + 1
+        $rank = $user->games_played > 0 && ! $user->isBot()
+            ? User::query()->humans()->where('games_played', '>', 0)->where('rating', '>', $user->rating)->count() + 1
             : null;
 
         $recent = GameMatch::query()

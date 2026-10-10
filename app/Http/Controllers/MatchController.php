@@ -16,15 +16,6 @@ use Illuminate\Support\Facades\Gate;
 
 class MatchController extends Controller
 {
-    /** How long an opponent may go without a heartbeat or a lock before the other player can claim the win. */
-    public const ABANDON_AFTER_SECONDS = 20;
-
-    /**
-     * How long an opponent may go without locking a piece, heartbeats or not. Lock-delay resets refill at each new
-     * lowest row and a hold respawns the piece at the top, so an honest piece can take minutes; this is far beyond it.
-     */
-    public const STALL_AFTER_SECONDS = 300;
-
     /**
      * The match, plus (for a player) their own authoritative state to resume from after a reload.
      */
@@ -91,13 +82,7 @@ class MatchController extends Controller
             $match = GameMatch::query()->lockForUpdate()->findOrFail($match->id);
             abort_if($match->isFinished(), 409, 'The match is already over.');
 
-            $opponent = $this->opponentOf($match, $request);
-            $lastLock = $opponent->last_active_at ?? $match->starts_at;
-            $lastSeen = max($opponent->last_seen_at ?? $match->starts_at, $lastLock);
-
-            $isStillPlaying = $lastSeen->diffInSeconds(now()) < self::ABANDON_AFTER_SECONDS
-                && $lastLock->diffInSeconds(now()) < self::STALL_AFTER_SECONDS;
-            abort_if($isStillPlaying, 409, 'Your opponent is still playing.');
+            abort_unless($this->opponentOf($match, $request)->hasAbandoned($match), 409, 'Your opponent is still playing.');
 
             $winner = $match->players()->whereBelongsTo($request->user())->firstOrFail();
             $finisher->finish($match, $winner, MatchFinisher::REASON_ABANDONED);

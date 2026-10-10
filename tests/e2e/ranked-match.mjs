@@ -1,12 +1,15 @@
 /**
  * Two-browser end-to-end check of a full ranked match against a running app + Reverb.
  *
+ *   VITE_E2E_AUTOPILOT=true npm run build
  *   php artisan reverb:start
+ *   php artisan bots:play
  *   php artisan serve --port=8040
  *   E2E_URL=http://127.0.0.1:8040 npm run test:e2e
  *
  * Both players register through the UI and queue, and the bot autopilot
- * (?autopilot=1) plays each side of a real match: every lock goes through the
+ * (?autopilot=1, only in dev builds or builds made with VITE_E2E_AUTOPILOT=true)
+ * plays each side of a real match: every lock goes through the
  * server's validator, and boards and garbage cross over Reverb. Player B then
  * reloads mid-match (resuming from server state) and stacks pieces by keyboard
  * until topping out. The test then checks the result, the rating changes,
@@ -158,6 +161,23 @@ await step('the replay viewer rebuilds and plays the match', async () => {
     await a.selectOption('[data-testid=replay-view] select', '4');
     await a.waitForTimeout(4000);
     await a.screenshot({ path: `${OUT}/06-replay.png` });
+});
+
+await step('a lone player is paired with a house bot that plays from the server', async () => {
+    await a.goto(`${BASE}/play`);
+    await a.waitForURL(/\/match\/\d+/, { timeout: 25000 });
+    const botMatchId = a.url().match(/match\/(\d+)/)[1];
+    await waitForStatus(a, 'playing', 10000);
+    await a.waitForTimeout(6000);
+    const { match } = await apiGet(a, `/api/matches/${botMatchId}`);
+    const bot = match.players.find((p) => p.user.is_bot);
+    expect(bot, 'no bot in the match');
+    expect(bot.pieces >= 4, `the bot locked ${bot.pieces} pieces (is bots:play running?)`);
+    expect((await a.locator('text=BOT').count()) > 0, 'no BOT badge on the HUD');
+    await a.screenshot({ path: `${OUT}/09-bot-match.png` });
+    await a.click('button:has-text("Forfeit")');
+    await waitForStatus(a, 'finished');
+    return `${bot.user.name} locked ${bot.pieces} pieces in about 6s`;
 });
 
 await step('practice mode runs a local game against the bot', async () => {

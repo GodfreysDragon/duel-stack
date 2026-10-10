@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Database\Factories\GameMatchFactory;
+use Illuminate\Database\Eloquent\Attributes\DateFormat;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Scope;
 use Illuminate\Database\Eloquent\Builder;
@@ -14,6 +15,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 /**
  * A 1v1 ranked match. ("Match" is a reserved word in PHP 8.)
  */
+#[DateFormat('Y-m-d H:i:s.v')]
 #[Fillable(['seed', 'status', 'starts_at', 'ended_at', 'winner_id', 'end_reason'])]
 class GameMatch extends Model
 {

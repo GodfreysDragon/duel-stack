@@ -3,7 +3,6 @@
 namespace Tests\Feature;
 
 use App\Events\MatchEnded;
-use App\Http\Controllers\MatchController;
 use App\Models\GameMatch;
 use App\Models\MatchPlayer;
 use App\Models\User;
@@ -107,7 +106,7 @@ class MatchLifecycleTest extends TestCase
     {
         $this->match->players()->update(['last_active_at' => now()]);
 
-        $this->travel(MatchController::STALL_AFTER_SECONDS - 1)->seconds();
+        $this->travel(MatchPlayer::STALL_AFTER_SECONDS - 1)->seconds();
         $this->actingAs($this->bob)->postJson("/api/matches/{$this->match->id}/heartbeat")->assertNoContent();
         $this->actingAs($this->alice)->postJson("/api/matches/{$this->match->id}/claim")->assertConflict();
 

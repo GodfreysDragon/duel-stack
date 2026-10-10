@@ -5,12 +5,14 @@ namespace App\Models;
 use App\Game\Board;
 use App\Game\PlayerState;
 use Database\Factories\MatchPlayerFactory;
+use Illuminate\Database\Eloquent\Attributes\DateFormat;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+#[DateFormat('Y-m-d H:i:s.v')]
 #[Fillable([
     'game_match_id', 'user_id', 'slot', 'board', 'current', 'next_index', 'hold', 'combo', 'b2b', 'score', 'lines',
     'pieces', 'topped_out', 'garbage_sent', 'garbage_received', 'last_active_at', 'last_seen_at', 'rating_before',
@@ -20,6 +22,15 @@ class MatchPlayer extends Model
 {
     /** @use HasFactory<MatchPlayerFactory> */
     use HasFactory;
+
+    /** How long a player may go without a heartbeat or a lock before their opponent can claim the win. */
+    public const ABANDON_AFTER_SECONDS = 20;
+
+    /**
+     * How long a player may go without locking a piece, heartbeats or not. Lock-delay resets refill at each new
+     * lowest row and a hold respawns the piece at the top, so an honest piece can take minutes; this is far beyond it.
+     */
+    public const STALL_AFTER_SECONDS = 300;
 
     /**
      * @return array<string, string>
@@ -66,6 +77,18 @@ class MatchPlayer extends Model
     public function moves(): HasMany
     {
         return $this->hasMany(MatchMove::class)->orderBy('piece_number');
+    }
+
+    /**
+     * Whether this player has left the match: no heartbeat or lock for a while, or no lock for far too long.
+     */
+    public function hasAbandoned(GameMatch $match): bool
+    {
+        $lastLock = $this->last_active_at ?? $match->starts_at;
+        $lastSeen = max($this->last_seen_at ?? $match->starts_at, $lastLock);
+
+        return $lastSeen->diffInSeconds(now()) >= self::ABANDON_AFTER_SECONDS
+            || $lastLock->diffInSeconds(now()) >= self::STALL_AFTER_SECONDS;
     }
 
     public function toState(): PlayerState

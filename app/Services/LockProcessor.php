@@ -153,7 +153,7 @@ class LockProcessor
     {
         $overdue = $player->incomingGarbage()
             ->whereNull('applied_at_piece')
-            ->where('created_at', '<=', now()->subMilliseconds(Rules::GARBAGE_GRACE_MS))
+            ->where('created_at', '<=', now()->subMilliseconds(Rules::GARBAGE_GRACE_MS)->format('Y-m-d H:i:s.v'))
             ->count();
 
         if ($overdue > $claimedCount) {

@@ -29,6 +29,11 @@ class Matchmaker
     /** Entries not polled for this long are treated as gone. */
     public const STALE_AFTER_SECONDS = 10;
 
+    /** A player nobody has been paired with for this long plays one of the house bots instead. */
+    public const BOT_AFTER_SECONDS = 15;
+
+    public function __construct(private BotRoster $bots) {}
+
     /**
      * Puts the user in the queue (or refreshes their entry) and tries to pair them.
      */
@@ -50,22 +55,26 @@ class Matchmaker
             $entry->fill(['rating' => $user->rating, 'last_seen_at' => now()])->save();
 
             $opponent = $this->findOpponent($entry);
-            if ($opponent === null) {
+            if ($opponent === null && $this->secondsUntilBot($entry) > 0) {
                 return null;
             }
 
             $paired = true;
 
             return DB::transaction(function () use ($user, $entry, $opponent) {
-                QueueEntry::query()->whereKey([$entry->id, $opponent->id])->delete();
+                QueueEntry::query()->whereKey(array_filter([$entry->id, $opponent?->id]))->delete();
 
-                return $this->createMatch($opponent->user, $user);
+                return $opponent !== null
+                    ? $this->createMatch($opponent->user, $user)
+                    : $this->createMatch($user, $this->bots->closestTo($user->rating));
             });
         });
 
         if ($paired) {
             foreach ($match->players as $player) {
-                MatchFound::dispatch($player->user_id, $match->id);
+                if (! $player->user->isBot()) {
+                    MatchFound::dispatch($player->user_id, $match->id);
+                }
             }
         }
 
@@ -113,6 +122,11 @@ class Matchmaker
             ->filter(fn (QueueEntry $other) => abs($other->rating - $entry->rating) <= max($this->window($entry), $this->window($other)))
             ->sortBy(fn (QueueEntry $other) => abs($other->rating - $entry->rating))
             ->first();
+    }
+
+    public function secondsUntilBot(QueueEntry $entry): int
+    {
+        return max(0, self::BOT_AFTER_SECONDS - (int) $entry->joined_at->diffInSeconds(now()));
     }
 
     public function window(QueueEntry $entry): int
