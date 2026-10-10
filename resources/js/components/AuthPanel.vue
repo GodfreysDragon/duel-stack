@@ -1,7 +1,7 @@
 <script setup>
 import { reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { login, register } from '../lib/session';
+import { login, playAsGuest, register } from '../lib/session';
 
 const route = useRoute();
 const router = useRouter();
@@ -11,11 +11,11 @@ const form = reactive({ name: '', password: '' });
 const errors = ref({});
 const busy = ref(false);
 
-async function submit() {
+async function signIn(attempt) {
     busy.value = true;
     errors.value = {};
     try {
-        await (mode.value === 'register' ? register : login)(form.name, form.password);
+        await attempt();
         // Navigate from here: signing in unmounts this panel before an emitted event could be handled.
         router.push(route.query.next ?? { name: 'play' });
     } catch (e) {
@@ -24,6 +24,9 @@ async function submit() {
         busy.value = false;
     }
 }
+
+const submit = () => signIn(() => (mode.value === 'register' ? register : login)(form.name, form.password));
+const guest = () => signIn(playAsGuest);
 </script>
 
 <template>
@@ -71,5 +74,18 @@ async function submit() {
         >
             {{ mode === 'register' ? 'Create account & play' : 'Sign in' }}
         </button>
+        <div class="flex items-center gap-3 text-xs text-slate-500" aria-hidden="true">
+            <span class="h-px flex-1 bg-slate-800"></span>or<span class="h-px flex-1 bg-slate-800"></span>
+        </div>
+        <button
+            type="button"
+            :disabled="busy"
+            class="w-full rounded-lg border border-slate-700 py-2 font-medium text-slate-200 hover:bg-slate-800 disabled:opacity-50"
+            data-testid="play-as-guest"
+            @click="guest"
+        >
+            Play as a guest
+        </button>
+        <p class="text-center text-xs text-slate-500">No sign-up. Your guest account stays signed in on this browser.</p>
     </form>
 </template>

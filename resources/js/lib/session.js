@@ -20,3 +20,4 @@ export const refreshSession = async () => apply(await api('GET', '/api/me'));
 export const register = async (name, password) => apply(await api('POST', '/api/register', { name, password }));
 export const login = async (name, password) => apply(await api('POST', '/api/login', { name, password }));
 export const logout = async () => apply(await api('POST', '/api/logout'));
+export const playAsGuest = async () => apply(await api('POST', '/api/guest'));

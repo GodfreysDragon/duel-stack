@@ -9,6 +9,7 @@ use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -25,6 +26,24 @@ class AuthController extends Controller
     public function register(RegisterRequest $request): JsonResponse
     {
         $user = User::create($request->validated());
+
+        Auth::login($user, remember: true);
+        $request->session()->regenerate();
+
+        return $this->sessionResponse($request, 201);
+    }
+
+    /**
+     * A throwaway account so anyone can try a ranked match in one click. It stays signed in on this browser
+     * ("remember me") but has no password the player knows.
+     */
+    public function guest(Request $request): JsonResponse
+    {
+        do {
+            $name = 'guest-'.Str::lower(Str::random(6));
+        } while (User::query()->where('name', $name)->exists());
+
+        $user = User::create(['name' => $name, 'password' => Str::random(64)]);
 
         Auth::login($user, remember: true);
         $request->session()->regenerate();

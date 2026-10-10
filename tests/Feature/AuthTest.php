@@ -29,6 +29,15 @@ class AuthTest extends TestCase
         $this->assertAuthenticatedAs(User::firstWhere('name', 'blockhead'));
     }
 
+    public function test_anyone_can_play_as_a_guest_without_choosing_a_name(): void
+    {
+        $response = $this->postJson('/api/guest')->assertCreated();
+
+        $this->assertMatchesRegularExpression('/^guest-[a-z0-9]{6}$/', $response->json('user.name'));
+        $this->assertAuthenticatedAs(User::firstWhere('name', $response->json('user.name')));
+        $this->assertNotNull($response->json('csrf_token'));
+    }
+
     public function test_registration_rejects_taken_and_malformed_names(): void
     {
         User::factory()->create(['name' => 'taken']);

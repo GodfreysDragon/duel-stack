@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('api')->name('api.')->group(function () {
     Route::get('me', [AuthController::class, 'me'])->name('me');
     Route::post('register', [AuthController::class, 'register'])->middleware('throttle:10,1')->name('register');
+    Route::post('guest', [AuthController::class, 'guest'])->middleware('throttle:10,1')->name('guest');
     Route::post('login', [AuthController::class, 'login'])->middleware('throttle:10,1')->name('login');
     Route::post('logout', [AuthController::class, 'logout'])->name('logout');
 
