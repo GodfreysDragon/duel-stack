@@ -13,7 +13,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
     'game_match_id', 'user_id', 'slot', 'board', 'current', 'next_index', 'hold', 'combo', 'b2b', 'score', 'lines',
-    'pieces', 'topped_out', 'garbage_sent', 'garbage_received', 'last_active_at', 'rating_before', 'rating_after',
+    'pieces', 'topped_out', 'garbage_sent', 'garbage_received', 'last_active_at', 'last_seen_at', 'rating_before',
+    'rating_after',
 ])]
 class MatchPlayer extends Model
 {
@@ -29,6 +30,7 @@ class MatchPlayer extends Model
             'b2b' => 'boolean',
             'topped_out' => 'boolean',
             'last_active_at' => 'immutable_datetime',
+            'last_seen_at' => 'immutable_datetime',
         ];
     }
 

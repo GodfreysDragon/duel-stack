@@ -8,6 +8,8 @@ import { chooseMove } from '../engine/bot.js';
 
 const ABANDON_AFTER_MS = 20000;
 const WHISPER_INTERVAL_MS = 80;
+// Sent from the render loop, which only runs while the tab is visible, so heartbeats stop when the player leaves.
+const HEARTBEAT_INTERVAL_MS = 5000;
 
 const toEngineState = (state) => ({ ...state, board: deserialize(state.board) });
 
@@ -49,6 +51,7 @@ export function useOnlineMatch(matchId, { autopilot = false } = {}) {
     const expectedBoards = new Map();
     let lastWhisper = 0;
     let lastWhispered = '';
+    let lastHeartbeat = 0;
     const timers = [];
 
     const url = `/api/matches/${matchId}`;
@@ -250,6 +253,11 @@ export function useOnlineMatch(matchId, { autopilot = false } = {}) {
         const g = game.value;
         if (!g) return { me: { board: emptyBoard() }, opponent: opp };
         g.update(dt);
+
+        if (g.running && performance.now() - lastHeartbeat > HEARTBEAT_INTERVAL_MS) {
+            lastHeartbeat = performance.now();
+            api('POST', `${url}/heartbeat`).catch(() => {});
+        }
 
         if (channel && g.running && performance.now() - lastWhisper > WHISPER_INTERVAL_MS) {
             const key = `${g.active.type}${g.active.rotation}:${g.active.x}:${g.active.y}`;

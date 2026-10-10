@@ -15,18 +15,23 @@ class MatchmakingController extends Controller
      */
     public function store(Request $request, Matchmaker $matchmaker): JsonResponse
     {
-        $match = $matchmaker->join($request->user());
+        $user = $request->user();
+        $match = $matchmaker->join($user);
+        $entry = $match === null ? QueueEntry::query()->firstWhere('user_id', $user->id) : null;
+
+        // Another player's poll can pair this user between join() releasing its lock and the lookup above.
+        if ($match === null && $entry === null) {
+            $match = $user->activeMatch();
+        }
 
         if ($match !== null) {
             return response()->json(['status' => 'matched', 'match_id' => $match->id]);
         }
 
-        $entry = QueueEntry::query()->where('user_id', $request->user()->id)->firstOrFail();
-
         return response()->json([
             'status' => 'searching',
             'players_waiting' => QueueEntry::query()->count(),
-            'rating_window' => $matchmaker->window($entry),
+            'rating_window' => $entry !== null ? $matchmaker->window($entry) : Matchmaker::BASE_WINDOW,
         ]);
     }
 

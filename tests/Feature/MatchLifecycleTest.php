@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Events\MatchEnded;
+use App\Http\Controllers\MatchController;
 use App\Models\GameMatch;
 use App\Models\MatchPlayer;
 use App\Models\User;
@@ -84,12 +85,55 @@ class MatchLifecycleTest extends TestCase
             ->assertJsonPath('match.end_reason', 'abandoned');
     }
 
-    public function test_outsiders_cannot_forfeit_or_claim(): void
+    public function test_heartbeats_keep_a_player_between_locks_from_being_claimed_against(): void
+    {
+        $this->match->players()->update(['last_active_at' => now()]);
+
+        $this->travel(15)->seconds();
+        $this->actingAs($this->bob)->postJson("/api/matches/{$this->match->id}/heartbeat")->assertNoContent();
+
+        $this->travel(15)->seconds();
+        $this->actingAs($this->alice)->postJson("/api/matches/{$this->match->id}/claim")
+            ->assertConflict()
+            ->assertJsonPath('message', 'Your opponent is still playing.');
+
+        $this->travel(21)->seconds();
+        $this->actingAs($this->alice)->postJson("/api/matches/{$this->match->id}/claim")
+            ->assertOk()
+            ->assertJsonPath('match.winner_id', $this->alice->id);
+    }
+
+    public function test_heartbeats_without_locks_cannot_stall_a_match_forever(): void
+    {
+        $this->match->players()->update(['last_active_at' => now()]);
+
+        $this->travel(MatchController::STALL_AFTER_SECONDS - 1)->seconds();
+        $this->actingAs($this->bob)->postJson("/api/matches/{$this->match->id}/heartbeat")->assertNoContent();
+        $this->actingAs($this->alice)->postJson("/api/matches/{$this->match->id}/claim")->assertConflict();
+
+        $this->travel(2)->seconds();
+        $this->actingAs($this->bob)->postJson("/api/matches/{$this->match->id}/heartbeat")->assertNoContent();
+        $this->actingAs($this->alice)->postJson("/api/matches/{$this->match->id}/claim")
+            ->assertOk()
+            ->assertJsonPath('match.end_reason', 'abandoned');
+    }
+
+    public function test_a_heartbeat_after_the_match_is_over_changes_nothing(): void
+    {
+        $this->match->update(['status' => GameMatch::STATUS_FINISHED]);
+
+        $this->actingAs($this->alice)->postJson("/api/matches/{$this->match->id}/heartbeat")->assertNoContent();
+
+        $this->assertSame(0, MatchPlayer::whereNotNull('last_seen_at')->count());
+    }
+
+    public function test_outsiders_cannot_forfeit_claim_or_send_heartbeats(): void
     {
         $outsider = User::factory()->create();
 
         $this->actingAs($outsider)->postJson("/api/matches/{$this->match->id}/forfeit")->assertForbidden();
         $this->actingAs($outsider)->postJson("/api/matches/{$this->match->id}/claim")->assertForbidden();
+        $this->actingAs($outsider)->postJson("/api/matches/{$this->match->id}/heartbeat")->assertForbidden();
     }
 
     public function test_a_replay_lists_every_move_once_the_match_is_over(): void

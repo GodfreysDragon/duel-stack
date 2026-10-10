@@ -7,8 +7,10 @@ use App\Game\Randomizer;
 use App\Models\GameMatch;
 use App\Models\QueueEntry;
 use App\Models\User;
+use App\Services\Matchmaker;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
+use Mockery\MockInterface;
 use Tests\TestCase;
 
 class MatchmakingTest extends TestCase
@@ -107,6 +109,36 @@ class MatchmakingTest extends TestCase
         $this->actingAs($user)->postJson('/api/matchmaking')->assertJson(['status' => 'matched', 'match_id' => $match->id]);
 
         $this->assertDatabaseEmpty('queue_entries');
+    }
+
+    public function test_a_second_tab_polling_after_its_pairing_does_not_leave_the_player_queued(): void
+    {
+        [$user, $opponent, $other] = User::factory(3)->create();
+        $match = GameMatch::factory()->between($user, $opponent)->create();
+        QueueEntry::create(['user_id' => $user->id, 'rating' => 1000, 'joined_at' => now(), 'last_seen_at' => now()]);
+
+        $this->actingAs($user)->postJson('/api/matchmaking')->assertJson(['status' => 'matched', 'match_id' => $match->id]);
+        $this->actingAs($other)->postJson('/api/matchmaking')->assertJson(['status' => 'searching']);
+
+        $this->assertSame(1, GameMatch::count());
+        Event::assertNotDispatched(MatchFound::class);
+    }
+
+    public function test_a_player_paired_by_someone_else_right_after_their_own_poll_is_sent_to_the_match(): void
+    {
+        [$user, $opponent] = User::factory(2)->create();
+        $this->mock(Matchmaker::class, function (MockInterface $matchmaker) use ($user, $opponent) {
+            // join() finds nobody, then the opponent's poll pairs the user before the controller reads the queue.
+            $matchmaker->shouldReceive('join')->andReturnUsing(function () use ($user, $opponent) {
+                GameMatch::factory()->between($opponent, $user)->create();
+
+                return null;
+            });
+        });
+
+        $this->actingAs($user)->postJson('/api/matchmaking')
+            ->assertOk()
+            ->assertJson(['status' => 'matched', 'match_id' => GameMatch::sole()->id]);
     }
 
     public function test_a_player_can_leave_the_queue(): void

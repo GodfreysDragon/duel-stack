@@ -24,6 +24,7 @@ Route::prefix('api')->name('api.')->group(function () {
         Route::get('matches/{match}/replay', [MatchController::class, 'replay'])->name('matches.replay');
         Route::post('matches/{match}/locks', [MatchController::class, 'lock'])->middleware('throttle:locks')->name('matches.lock');
         Route::post('matches/{match}/forfeit', [MatchController::class, 'forfeit'])->name('matches.forfeit');
+        Route::post('matches/{match}/heartbeat', [MatchController::class, 'heartbeat'])->middleware('throttle:locks')->name('matches.heartbeat');
         Route::post('matches/{match}/claim', [MatchController::class, 'claim'])->name('matches.claim');
     });
 });

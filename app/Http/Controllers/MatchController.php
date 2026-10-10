@@ -10,13 +10,20 @@ use App\Services\LockProcessor;
 use App\Services\MatchFinisher;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 
 class MatchController extends Controller
 {
-    /** How long an opponent may go without locking a piece before the other player can claim the win. */
+    /** How long an opponent may go without a heartbeat or a lock before the other player can claim the win. */
     public const ABANDON_AFTER_SECONDS = 20;
+
+    /**
+     * How long an opponent may go without locking a piece, heartbeats or not. Lock-delay resets refill at each new
+     * lowest row and a hold respawns the piece at the top, so an honest piece can take minutes; this is far beyond it.
+     */
+    public const STALL_AFTER_SECONDS = 300;
 
     /**
      * The match, plus (for a player) their own authoritative state to resume from after a reload.
@@ -60,6 +67,20 @@ class MatchController extends Controller
     }
 
     /**
+     * Sent every few seconds by a running, visible game, so a player between locks is not mistaken for one who left.
+     */
+    public function heartbeat(Request $request, GameMatch $match): Response
+    {
+        Gate::authorize('play', $match);
+
+        if (! $match->isFinished()) {
+            $match->players()->whereBelongsTo($request->user())->update(['last_seen_at' => now()]);
+        }
+
+        return response()->noContent();
+    }
+
+    /**
      * Win by default when the opponent has stopped playing (closed the tab, lost connection, ...).
      */
     public function claim(Request $request, GameMatch $match, MatchFinisher $finisher): JsonResponse
@@ -71,9 +92,12 @@ class MatchController extends Controller
             abort_if($match->isFinished(), 409, 'The match is already over.');
 
             $opponent = $this->opponentOf($match, $request);
-            $lastSeen = $opponent->last_active_at ?? $match->starts_at;
+            $lastLock = $opponent->last_active_at ?? $match->starts_at;
+            $lastSeen = max($opponent->last_seen_at ?? $match->starts_at, $lastLock);
 
-            abort_if($lastSeen->diffInSeconds(now()) < self::ABANDON_AFTER_SECONDS, 409, 'Your opponent is still playing.');
+            $isStillPlaying = $lastSeen->diffInSeconds(now()) < self::ABANDON_AFTER_SECONDS
+                && $lastLock->diffInSeconds(now()) < self::STALL_AFTER_SECONDS;
+            abort_if($isStillPlaying, 409, 'Your opponent is still playing.');
 
             $winner = $match->players()->whereBelongsTo($request->user())->firstOrFail();
             $finisher->finish($match, $winner, MatchFinisher::REASON_ABANDONED);

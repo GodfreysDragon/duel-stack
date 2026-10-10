@@ -34,11 +34,16 @@ class Matchmaker
      */
     public function join(User $user): ?GameMatch
     {
-        if ($active = $user->activeMatch()) {
-            return $active;
-        }
+        $paired = false;
 
-        $match = Cache::lock('matchmaking', 10)->block(5, function () use ($user) {
+        $match = Cache::lock('matchmaking', 10)->block(5, function () use ($user, &$paired) {
+            // Checked under the lock: a concurrent poll (a second tab) may have just paired this user.
+            if ($active = $user->activeMatch()) {
+                QueueEntry::query()->where('user_id', $user->id)->delete();
+
+                return $active;
+            }
+
             QueueEntry::query()->where('last_seen_at', '<', now()->subSeconds(self::STALE_AFTER_SECONDS))->delete();
 
             $entry = QueueEntry::query()->firstOrNew(['user_id' => $user->id], ['joined_at' => now()]);
@@ -49,6 +54,8 @@ class Matchmaker
                 return null;
             }
 
+            $paired = true;
+
             return DB::transaction(function () use ($user, $entry, $opponent) {
                 QueueEntry::query()->whereKey([$entry->id, $opponent->id])->delete();
 
@@ -56,7 +63,7 @@ class Matchmaker
             });
         });
 
-        if ($match !== null) {
+        if ($paired) {
             foreach ($match->players as $player) {
                 MatchFound::dispatch($player->user_id, $match->id);
             }

@@ -19,7 +19,7 @@ class ExpireIdleMatches extends Command
         $cutoff = now()->subMinutes((int) $this->option('minutes'));
         $expired = 0;
 
-        GameMatch::query()->active()->where('starts_at', '<', $cutoff)->with('players')->each(
+        GameMatch::query()->active()->where('starts_at', '<', $cutoff)->with('players')->eachById(
             function (GameMatch $match) use ($cutoff, $finisher, &$expired) {
                 $idle = $match->players->every(
                     fn (MatchPlayer $player) => ($player->last_active_at ?? $match->starts_at)->lessThan($cutoff),

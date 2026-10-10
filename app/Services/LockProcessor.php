@@ -75,6 +75,7 @@ class LockProcessor
             $pieceNumber = $player->pieces;
             $player->fillFromState($result['state'])->fill([
                 'last_active_at' => now(),
+                'last_seen_at' => now(),
                 'garbage_received' => $player->garbage_received + $garbage->sum('lines'),
                 'garbage_sent' => $player->garbage_sent + $result['attack'],
             ])->save();
