@@ -1,5 +1,6 @@
 import Echo from 'laravel-echo';
 import Pusher from 'pusher-js';
+import { reactive } from 'vue';
 
 window.Pusher = Pusher;
 
@@ -27,3 +28,7 @@ export function setEchoCsrfToken(token) {
 }
 
 export const connection = echo.connector.pusher.connection;
+
+/** The WebSocket connection state ('connected', 'connecting', 'unavailable', ...), for the UI. */
+export const realtime = reactive({ state: connection.state });
+connection.bind('state_change', ({ current }) => (realtime.state = current));

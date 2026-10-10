@@ -119,6 +119,7 @@ export function useOnlineMatch(matchId, { autopilot = false } = {}) {
         const opponentId = opponent.value.user.id;
         // House bots play from the server and never join the presence channel.
         const isBot = opponent.value.user.is_bot;
+        opp.online = isBot;
         channel = echo
             .join(`match.${matchId}`)
             .here((users) => (opp.online = isBot || users.some((u) => u.id === opponentId)))

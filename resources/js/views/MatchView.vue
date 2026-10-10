@@ -7,6 +7,7 @@ import ResultCard from '../components/ResultCard.vue';
 import TouchControls from '../components/TouchControls.vue';
 import { useKeyboard } from '../composables/useKeyboard';
 import { useOnlineMatch } from '../composables/useOnlineMatch';
+import { realtime } from '../lib/echo';
 import { refreshSession, session } from '../lib/session';
 
 const props = defineProps({ id: { type: String, required: true } });
@@ -37,6 +38,14 @@ function confirmForfeit() {
         <p v-else-if="status === 'error'" class="py-20 text-center text-red-400">{{ error }}</p>
 
         <template v-else-if="me && opponent">
+            <p
+                v-if="realtime.state !== 'connected' && ['countdown', 'playing'].includes(status)"
+                class="mb-3 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-2 text-center text-sm text-amber-200"
+                role="status"
+                data-testid="realtime-warning"
+            >
+                Reconnecting to the live server… Your pieces are still being saved, but your opponent's board is paused.
+            </p>
             <div class="mb-3 flex flex-wrap items-end justify-between gap-2">
                 <PlayerHud :name="me.user.name" :rating="me.rating_before" :score="stats.score" :lines="stats.lines" :sent="stats.sent" />
                 <PlayerHud
