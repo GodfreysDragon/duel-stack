@@ -1,0 +1,31 @@
+{
+    "$schema": "https://www.schemastore.org/package.json",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "build": "vite build",
+        "dev": "vite",
+        "test:js": "node --test tests/js/*.test.mjs",
+        "test:e2e": "node tests/e2e/ranked-match.mjs",
+        "fixture": "node tests/js/parity-fixture.mjs"
+    },
+    "devDependencies": {
+        "@tailwindcss/vite": "^4.0.0",
+        "@vitejs/plugin-vue": "^6.0.9",
+        "concurrently": "^10.0.3",
+        "laravel-echo": "^2.5.0",
+        "laravel-vite-plugin": "^3.1",
+        "playwright-core": "^1.63.0",
+        "pusher-js": "^8.6.0",
+        "tailwindcss": "^4.0.0",
+        "vite": "^8.0.0"
+    },
+    "optionalDependencies": {
+        "@laravel/multiplex": "^0.4.1"
+    },
+    "dependencies": {
+        "pixi.js": "^8.22.0",
+        "vue": "^3.5.43",
+        "vue-router": "^5.3.1"
+    }
+}
