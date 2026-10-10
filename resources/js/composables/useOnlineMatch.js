@@ -10,6 +10,7 @@ const ABANDON_AFTER_MS = 20000;
 const WHISPER_INTERVAL_MS = 80;
 // Sent from the render loop, which only runs while the tab is visible, so heartbeats stop when the player leaves.
 const HEARTBEAT_INTERVAL_MS = 5000;
+const RESULT_FALLBACK_MS = 3000;
 
 const toEngineState = (state) => ({ ...state, board: deserialize(state.board) });
 
@@ -77,7 +78,7 @@ export function useOnlineMatch(matchId, { autopilot = false } = {}) {
                 toppedOut: opponent.value.topped_out,
             });
 
-            const g = new Game({ seed: data.match.seed, onLock, onTopOut: () => (status.value = 'waiting') });
+            const g = new Game({ seed: data.match.seed, onLock, onTopOut: waitForResult });
             if (data.you.state.pieces > 0 || data.you.pending_garbage.length) {
                 g.resync(toEngineState(data.you.state), data.you.pending_garbage);
             }
@@ -177,7 +178,7 @@ export function useOnlineMatch(matchId, { autopilot = false } = {}) {
             if (response.state.board !== expected && queue.length === 0 && !response.match_over) {
                 resync(response.state, game.value.pendingGarbage);
             }
-            if (response.match_over) status.value = 'waiting';
+            if (response.match_over) waitForResult();
         } catch (e) {
             if (e instanceof ApiError && e.status === 409) {
                 queue = [];
@@ -203,6 +204,20 @@ export function useOnlineMatch(matchId, { autopilot = false } = {}) {
         game.value.resync(toEngineState(state), pendingGarbage);
         stats.score = state.score;
         stats.lines = state.lines;
+    }
+
+    /**
+     * After topping out, the result arrives as match.ended, which can beat the final lock's HTTP response
+     * (so never step back from 'finished'). If the broadcast is lost, ask the server instead.
+     */
+    function waitForResult() {
+        if (status.value === 'finished') return;
+        status.value = 'waiting';
+        timers.push(
+            setTimeout(() => {
+                if (status.value === 'waiting') refreshResult().catch(() => {});
+            }, RESULT_FALLBACK_MS),
+        );
     }
 
     async function refreshResult() {

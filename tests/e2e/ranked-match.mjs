@@ -67,7 +67,8 @@ await step('both players register through the UI', async () => {
         await page.fill('input[name=name]', names[who]);
         await page.fill('input[name=password]', 'correct-horse');
         await page.click('button[type=submit]');
-        await page.waitForSelector('[data-testid=matchmaking]');
+        // The second player can be paired at once and skip the matchmaking screen.
+        await page.waitForURL(/\/(play|match\/\d+)$/);
     }
 });
 
