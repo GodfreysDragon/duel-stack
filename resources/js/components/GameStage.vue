@@ -12,6 +12,8 @@ const props = defineProps({
     frame: { type: Function, required: true },
 });
 
+const COMPACT_BELOW_PX = 640;
+
 const host = ref(null);
 let app = null;
 let destroyed = false;
@@ -30,12 +32,20 @@ onMounted(async () => {
     app = pixi;
 
     const me = new BoardView({ cell: 28, panels: true });
-    const opponent = new BoardView({ cell: 17, panels: false });
-    opponent.position.set(me.totalW + 28, me.totalH - opponent.totalH);
+    // On narrow screens the opponent's board tucks under the NEXT panel, so the player's own board gets the width.
+    const compact = host.value.clientWidth < COMPACT_BELOW_PX;
+    const opponent = new BoardView({ cell: compact ? Math.floor((me.panelW - 8) / 10) : 17, panels: false });
+    if (compact) {
+        opponent.position.set(me.nextX + me.panelW - opponent.totalW, me.totalH - opponent.totalH);
+    } else {
+        opponent.position.set(me.totalW + 28, me.totalH - opponent.totalH);
+    }
     app.stage.addChild(me, opponent);
-    app.renderer.resize(opponent.x + opponent.totalW + 4, me.totalH + 4);
+    app.renderer.resize(Math.max(me.totalW, opponent.x + opponent.totalW) + 4, me.totalH + 4);
     app.stage.position.set(2, 2);
 
+    // autoDensity sets an inline pixel height, which would squash the canvas when max-w-full narrows it.
+    app.canvas.style.removeProperty('height');
     app.canvas.classList.add('block', 'h-auto', 'max-w-full');
     app.canvas.dataset.testid = 'game-canvas';
     host.value.appendChild(app.canvas);
