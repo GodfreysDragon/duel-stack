@@ -16,13 +16,13 @@ Route::prefix('api')->name('api.')->group(function () {
 
     Route::get('leaderboard', LeaderboardController::class)->name('leaderboard');
     Route::get('players/{user:name}', [PlayerController::class, 'show'])->name('players.show');
+    Route::get('matches/{match}/replay', [MatchController::class, 'replay'])->name('matches.replay');
 
     Route::middleware('auth')->group(function () {
         Route::post('matchmaking', [MatchmakingController::class, 'store'])->name('matchmaking.join');
         Route::delete('matchmaking', [MatchmakingController::class, 'destroy'])->name('matchmaking.leave');
 
         Route::get('matches/{match}', [MatchController::class, 'show'])->name('matches.show');
-        Route::get('matches/{match}/replay', [MatchController::class, 'replay'])->name('matches.replay');
         Route::post('matches/{match}/locks', [MatchController::class, 'lock'])->middleware('throttle:locks')->name('matches.lock');
         Route::post('matches/{match}/forfeit', [MatchController::class, 'forfeit'])->name('matches.forfeit');
         Route::post('matches/{match}/heartbeat', [MatchController::class, 'heartbeat'])->middleware('throttle:locks')->name('matches.heartbeat');

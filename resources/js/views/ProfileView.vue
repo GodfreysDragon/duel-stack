@@ -63,7 +63,7 @@ function outcome(match) {
                         <span class="font-mono" :class="o.delta > 0 ? 'text-green-400' : o.delta < 0 ? 'text-red-400' : 'text-slate-500'">
                             {{ o.delta > 0 ? '+' : '' }}{{ o.delta }}
                         </span>
-                        <RouterLink v-if="session.user" :to="`/replay/${match.id}`" class="ml-auto text-cyan-300 hover:underline">Replay</RouterLink>
+                        <RouterLink :to="`/replay/${match.id}`" class="ml-auto text-cyan-300 hover:underline">Replay</RouterLink>
                     </template>
                 </li>
                 <li v-if="profile.recent_matches.length === 0" class="px-4 py-6 text-center text-slate-500">No finished matches yet.</li>

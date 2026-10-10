@@ -12,7 +12,7 @@ const router = createRouter({
         { path: '/practice', name: 'practice', component: () => import('./views/PracticeView.vue') },
         { path: '/leaderboard', name: 'leaderboard', component: () => import('./views/LeaderboardView.vue') },
         { path: '/players/:name', name: 'player', component: () => import('./views/ProfileView.vue'), props: true },
-        { path: '/replay/:id', name: 'replay', component: () => import('./views/ReplayView.vue'), meta: { auth: true }, props: true },
+        { path: '/replay/:id', name: 'replay', component: () => import('./views/ReplayView.vue'), props: true },
         { path: '/:pathMatch(.*)*', redirect: '/' },
     ],
 });

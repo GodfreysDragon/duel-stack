@@ -145,13 +145,16 @@ class MatchLifecycleTest extends TestCase
 
         $this->actingAs($this->alice)->getJson("/api/matches/{$this->match->id}/replay")->assertForbidden();
 
+        // Finished replays are public, so a link can be shared with anyone.
         $this->match->update(['status' => GameMatch::STATUS_FINISHED]);
-        $this->actingAs(User::factory()->create())->getJson("/api/matches/{$this->match->id}/replay")
+        $this->app['auth']->forgetGuards();
+        $this->getJson("/api/matches/{$this->match->id}/replay")
             ->assertOk()
             ->assertJsonPath("moves.{$this->alice->id}.0.piece", 'T')
             ->assertJsonPath("moves.{$this->alice->id}.0.garbage", [['lines' => 1, 'hole' => 3]])
             ->assertJsonPath("moves.{$this->alice->id}.0.at_ms", 812)
             ->assertJsonPath("moves.{$this->bob->id}", []);
+        $this->assertGuest();
     }
 
     public function test_matches_abandoned_by_both_players_expire_without_rating_changes(): void

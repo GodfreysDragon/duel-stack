@@ -22,6 +22,18 @@ const time = ref(0);
 const playing = ref(true);
 const speed = ref(1);
 const focus = ref(0);
+const copied = ref(false);
+
+/** Replays are public, so the page's own URL is the share link. */
+async function copyLink() {
+    try {
+        await navigator.clipboard.writeText(window.location.href);
+        copied.value = true;
+        setTimeout(() => (copied.value = false), 2000);
+    } catch {
+        window.prompt('Copy this link:', window.location.href);
+    }
+}
 
 const duration = computed(() => Math.max(0, ...timelines.value.map((t) => t.at(-1)?.at ?? 0)) + 1500);
 
@@ -112,8 +124,11 @@ function togglePlay() {
                 <option v-for="s in [0.5, 1, 2, 4]" :key="s" :value="s">{{ s }}×</option>
             </select>
             <button type="button" class="rounded-lg border border-slate-700 px-3 py-1.5 hover:bg-slate-800" @click="focus = 1 - focus">Swap boards</button>
+            <button type="button" class="rounded-lg border border-slate-700 px-3 py-1.5 hover:bg-slate-800" data-testid="copy-replay-link" @click="copyLink">
+                {{ copied ? 'Link copied' : 'Copy link' }}
+            </button>
         </div>
 
-        <ResultCard :match="match" :viewer-id="session.user?.id" class="mx-auto mt-6 max-w-lg" />
+        <ResultCard :match="match" :viewer-id="session.user?.id ?? null" class="mx-auto mt-6 max-w-lg" />
     </div>
 </template>
