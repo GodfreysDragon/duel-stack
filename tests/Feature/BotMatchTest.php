@@ -101,7 +101,8 @@ class BotMatchTest extends TestCase
 
         $this->assertNotNull($batch->fresh()->applied_at_piece);
         $this->assertSame(2, $bot->fresh()->garbage_received);
-        $this->assertSame([['lines' => 2, 'hole' => 4]], $bot->moves()->whereNotNull('garbage')->sole()->garbage);
+        // assertEquals: MySQL's JSON type does not keep key order.
+        $this->assertEquals([['lines' => 2, 'hole' => 4]], $bot->moves()->whereNotNull('garbage')->sole()->garbage);
     }
 
     public function test_the_bot_claims_the_win_when_its_opponent_leaves(): void

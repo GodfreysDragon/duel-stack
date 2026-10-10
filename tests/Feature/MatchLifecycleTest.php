@@ -151,7 +151,10 @@ class MatchLifecycleTest extends TestCase
         $this->getJson("/api/matches/{$this->match->id}/replay")
             ->assertOk()
             ->assertJsonPath("moves.{$this->alice->id}.0.piece", 'T')
-            ->assertJsonPath("moves.{$this->alice->id}.0.garbage", [['lines' => 1, 'hole' => 3]])
+            // Field by field: MySQL's JSON type does not keep key order.
+            ->assertJsonPath("moves.{$this->alice->id}.0.garbage.0.lines", 1)
+            ->assertJsonPath("moves.{$this->alice->id}.0.garbage.0.hole", 3)
+            ->assertJsonCount(1, "moves.{$this->alice->id}.0.garbage")
             ->assertJsonPath("moves.{$this->alice->id}.0.at_ms", 812)
             ->assertJsonPath("moves.{$this->bob->id}", []);
         $this->assertGuest();
