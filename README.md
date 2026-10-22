@@ -133,3 +133,7 @@ E2E_URL=http://127.0.0.1:8040 npm run test:e2e
 
 ← → move · ↓ soft drop · Space hard drop · ↑/X rotate right · Z/Ctrl rotate left · A rotate 180° · C/Shift hold.
 On touch devices, on-screen buttons appear under the board.
+
+## License
+
+[MIT](LICENSE) © 2026 Cal Marusin
