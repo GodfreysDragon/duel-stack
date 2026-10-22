@@ -109,6 +109,18 @@ To use MySQL instead of SQLite, set `DB_CONNECTION=mysql` and the `DB_*` values 
 
 </details>
 
+## Deploying
+
+`deploy/` sets up a single Ubuntu 24.04 server: Nginx in front of PHP-FPM and Reverb (wss:// on the same domain),
+Supervisor keeping Reverb and the bot daemon running, cron for the scheduler, SQLite, and a Let's Encrypt
+certificate. No queue worker is needed, because every broadcast is sent immediately.
+
+```sh
+git clone https://github.com/GodfreysDragon/stack-duel.git /tmp/stack-duel
+sudo bash /tmp/stack-duel/deploy/setup.sh stack-duel.example.com you@example.com   # once
+bash /var/www/stack-duel/deploy/update.sh                                          # each deploy
+```
+
 ## Tests
 
 ```sh
