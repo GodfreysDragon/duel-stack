@@ -1,11 +1,16 @@
 {
     "$schema": "https://getcomposer.org/schema.json",
-    "name": "laravel/laravel",
+    "name": "godfreysdragon/stack-duel",
     "type": "project",
-    "description": "The skeleton application for the Laravel framework.",
+    "description": "Real-time 1v1 block-stacking battle: Laravel 13, Reverb WebSockets, Vue 3, PixiJS, a server-validated game engine and house bots.",
     "keywords": [
         "laravel",
-        "framework"
+        "reverb",
+        "websockets",
+        "vue",
+        "pixijs",
+        "multiplayer",
+        "game"
     ],
     "license": "MIT",
     "require": {
