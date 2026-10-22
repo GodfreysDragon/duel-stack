@@ -1,5 +1,7 @@
 # Stack Duel
 
+[![CI](https://github.com/GodfreysDragon/stack-duel/actions/workflows/ci.yml/badge.svg)](https://github.com/GodfreysDragon/stack-duel/actions/workflows/ci.yml)
+
 A real-time 1v1 block-stacking battle in the browser. Two players are matched by rating and dealt the same seeded
 pieces. Every line you clear sends garbage rows into your opponent's board, and the first player to top out loses.
 If nobody else is queueing, a server-side bot steps in after 15 seconds. You can play as a guest in one click.
