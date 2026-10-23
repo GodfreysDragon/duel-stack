@@ -30,7 +30,7 @@ class MatchController extends Controller
             'match' => MatchResource::make($match),
             'you' => $you ? [
                 'state' => $you->stateForClient(),
-                'pending_garbage' => $you->incomingGarbage()->whereNull('applied_at_piece')->get()->map->toClientArray(),
+                'pending_garbage' => $you->pendingGarbageForClient(),
             ] : null,
             'server_time' => now()->format('Y-m-d\TH:i:s.vP'),
         ]);

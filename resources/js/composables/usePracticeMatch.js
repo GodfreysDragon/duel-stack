@@ -42,17 +42,17 @@ export function usePracticeMatch() {
         const you = new Game({
             seed,
             onLock: (lock, outcome) => {
-                Object.assign(stats.you, { score: outcome.state.score, lines: outcome.state.lines, sent: stats.you.sent + outcome.attack });
+                Object.assign(stats.you, { score: outcome.state.score, lines: outcome.state.lines, sent: stats.you.sent + outcome.sent });
                 sfx.lock(outcome.cleared.length);
-                send(bot.value, outcome.attack);
+                send(bot.value, outcome.sent);
             },
             onTopOut: () => end('bot'),
         });
         const opponent = new Game({
             seed,
             onLock: (lock, outcome) => {
-                Object.assign(stats.bot, { score: outcome.state.score, lines: outcome.state.lines, sent: stats.bot.sent + outcome.attack });
-                send(game.value, outcome.attack);
+                Object.assign(stats.bot, { score: outcome.state.score, lines: outcome.state.lines, sent: stats.bot.sent + outcome.sent });
+                send(game.value, outcome.sent);
             },
             onTopOut: () => end('you'),
         });

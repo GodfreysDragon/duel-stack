@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { Randomizer } from '../../resources/js/engine/randomizer.js';
-import { applyLock, initialState, InvalidLock } from '../../resources/js/engine/simulation.js';
+import { applyLock, cancelGarbage, initialState, InvalidLock, mergePendingGarbage } from '../../resources/js/engine/simulation.js';
 import { addGarbage, deserialize, emptyBoard, scoreLock, serialize } from '../../resources/js/engine/board.js';
 import { Game } from '../../resources/js/engine/game.js';
 import { chooseMove } from '../../resources/js/engine/bot.js';
@@ -145,4 +145,33 @@ test('a played-back bot lock spawns, turns and shifts at the top, then falls to 
         assert.ok(Math.abs(b.x - a.x) <= 1 && b.y >= a.y, `jump between ${JSON.stringify(a)} and ${JSON.stringify(b)}`);
     }
     assert.equal(new Set(path.map((p) => p.rotation)).size, 2, 'turns once, the short way round');
+});
+
+test('an attack cancels pending garbage oldest first and sends only what is left', () => {
+    const pending = [{ id: 1, lines: 2, hole: 0 }, { id: 2, lines: 3, hole: 1 }];
+    assert.deepEqual(cancelGarbage(pending, 4), { pending: [{ id: 2, lines: 1, hole: 1 }], sent: 0 });
+    assert.deepEqual(cancelGarbage(pending, 7), { pending: [], sent: 2 });
+    assert.deepEqual(cancelGarbage(pending, 0), { pending, sent: 0 });
+    assert.equal(pending[0].lines, 2, 'the input is not modified');
+});
+
+test('a clearing lock cancels incoming garbage before reporting what it sent', () => {
+    const outcomes = [];
+    const game = startedGame(0, (lock, outcome) => outcomes.push(outcome));
+    const board = emptyBoard();
+    for (let y = 17; y < 22; y++) board[y] = y === 17 ? 'G.........' : 'GGGGGGGGG.';
+    game.resync({ ...initialState(new Randomizer(0)), board, current: 'I' }, [{ id: 9, lines: 3, hole: 0 }]);
+
+    game.placeDirect({ held: false, rotation: 1, x: 7 });
+
+    assert.equal(outcomes[0].attack, 4);
+    assert.equal(outcomes[0].sent, 1);
+    assert.deepEqual(game.pendingGarbage, []);
+});
+
+test("the server's pending garbage wins, but batches newer than its list are kept", () => {
+    const server = [{ id: 4, lines: 1, hole: 2 }];
+    const local = [{ id: 3, lines: 2, hole: 0 }, { id: 4, lines: 3, hole: 2 }, { id: 6, lines: 2, hole: 5 }];
+    assert.deepEqual(mergePendingGarbage(server, local), [{ id: 4, lines: 1, hole: 2 }, { id: 6, lines: 2, hole: 5 }]);
+    assert.deepEqual(mergePendingGarbage([], local), local);
 });

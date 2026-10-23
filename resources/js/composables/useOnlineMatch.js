@@ -4,6 +4,7 @@ import { echo } from '../lib/echo';
 import { session } from '../lib/session';
 import { Game } from '../engine/game.js';
 import { deserialize, emptyBoard, serialize } from '../engine/board.js';
+import { mergePendingGarbage } from '../engine/simulation.js';
 import { chooseMove } from '../engine/bot.js';
 import { pieceAlongLock } from '../engine/playback.js';
 import { sfx } from '../lib/sound';
@@ -52,8 +53,9 @@ export function useOnlineMatch(matchId, { autopilot = false } = {}) {
 
     let clockOffset = 0;
     let channel = null;
-    let queue = [];
+    let queue = []; // [{ body, sent }]: locks waiting to be POSTed, with the garbage each sends
     let sending = false;
+    let confirmedSent = 0;
     const expectedBoards = new Map();
     let lastWhisper = 0;
     let lastWhispered = '';
@@ -90,7 +92,8 @@ export function useOnlineMatch(matchId, { autopilot = false } = {}) {
                 g.resync(toEngineState(data.you.state), data.you.pending_garbage);
             }
             game.value = g;
-            Object.assign(stats, { score: data.you.state.score, lines: data.you.state.lines, sent: me.value.garbage_sent });
+            confirmedSent = me.value.garbage_sent;
+            Object.assign(stats, { score: data.you.state.score, lines: data.you.state.lines, sent: confirmedSent });
 
             subscribe();
             startCountdown(Date.parse(data.match.starts_at));
@@ -204,18 +207,26 @@ export function useOnlineMatch(matchId, { autopilot = false } = {}) {
         expectedBoards.set(pieceNumber, serialize(outcome.state.board));
         stats.score = outcome.state.score;
         stats.lines = outcome.state.lines;
-        stats.sent += outcome.attack;
         if (!autopilot) sfx.lock(outcome.cleared.length);
         queue.push({
-            piece_number: pieceNumber,
-            piece: lock.piece,
-            rotation: lock.rotation,
-            x: lock.x,
-            y: lock.y,
-            held: lock.held,
-            garbage_ids: lock.garbageIds,
+            body: {
+                piece_number: pieceNumber,
+                piece: lock.piece,
+                rotation: lock.rotation,
+                x: lock.x,
+                y: lock.y,
+                held: lock.held,
+                garbage_ids: lock.garbageIds,
+            },
+            sent: outcome.sent,
         });
+        updateSent();
         pump();
+    }
+
+    /** Garbage the server confirmed, plus what the locks still in flight should send. */
+    function updateSent() {
+        stats.sent = confirmedSent + queue.reduce((sum, item) => sum + item.sent, 0);
     }
 
     async function pump() {
@@ -223,17 +234,22 @@ export function useOnlineMatch(matchId, { autopilot = false } = {}) {
         sending = true;
         const item = queue[0];
         try {
-            const response = await api('POST', `${url}/locks`, item);
+            const response = await api('POST', `${url}/locks`, item.body);
             queue.shift();
-            const expected = expectedBoards.get(item.piece_number);
-            expectedBoards.delete(item.piece_number);
-            if (response.state.board !== expected && queue.length === 0 && !response.match_over) {
-                resync(response.state, game.value.pendingGarbage);
+            confirmedSent += response.sent?.lines ?? 0;
+            updateSent();
+            const expected = expectedBoards.get(item.body.piece_number);
+            expectedBoards.delete(item.body.piece_number);
+            if (queue.length === 0 && !response.match_over) {
+                const pending = mergePendingGarbage(response.pending_garbage, game.value.pendingGarbage);
+                if (response.state.board !== expected) resync(response.state, pending);
+                else game.value.pendingGarbage = pending;
             }
             if (response.match_over) waitForResult();
         } catch (e) {
             if (e instanceof ApiError && e.status === 409) {
                 queue = [];
+                updateSent();
                 expectedBoards.clear();
                 if (e.data?.message === 'The match is over.') {
                     await refreshResult();

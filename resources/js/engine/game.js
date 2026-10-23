@@ -1,7 +1,7 @@
 import { SPAWN_X, SPAWN_Y, kicksFor } from './constants.js';
 import { dropY, fits, isGrounded } from './board.js';
 import { Randomizer } from './randomizer.js';
-import { afterHold, applyLock, initialState, preview } from './simulation.js';
+import { afterHold, applyLock, cancelGarbage, initialState, preview } from './simulation.js';
 
 const DAS_MS = 133;
 const ARR_MS = 33;
@@ -213,10 +213,14 @@ export class Game {
             result = applyLock(turnStart, this.randomizer, { ...base, garbage: applied });
         }
 
+        // An attack cancels incoming garbage first; `sent` is what reaches the opponent.
+        const { pending, sent } = cancelGarbage(this.pendingGarbage, result.attack);
+        this.pendingGarbage = pending;
+
         this.state = result.state;
         this.turnStartState = null;
         if (result.cleared.length) this.lastClear = { rows: result.cleared, at: performance.now() };
-        this.onLock({ ...base, garbageIds: applied.map((b) => b.id) }, result);
+        this.onLock({ ...base, garbageIds: applied.map((b) => b.id) }, { ...result, sent });
 
         if (this.state.toppedOut) return this.topOut();
         this.spawn(false);

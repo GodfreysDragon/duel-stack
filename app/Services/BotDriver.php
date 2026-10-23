@@ -59,7 +59,7 @@ class BotDriver
         }
 
         // Like the client: garbage rises on a lock that clears nothing.
-        $pending = $bot->incomingGarbage()->whereNull('applied_at_piece')->get();
+        $pending = $bot->incomingGarbage()->pending()->get();
         $clears = Simulation::applyLock($state, $randomizer, [...$move, 'garbage' => []])['cleared'] !== [];
         $garbageIds = $clears ? [] : $pending->modelKeys();
 

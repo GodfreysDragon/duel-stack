@@ -73,11 +73,24 @@ class LockProcessor
             }
 
             $pieceNumber = $player->pieces;
+            $opponent = $match->players()->where('id', '!=', $player->id)->lockForUpdate()->firstOrFail();
+
+            // An attack first cancels the attacker's own incoming garbage; only the rest is sent.
+            $attack = $result['attack'] - $this->cancelIncomingGarbage($player, $result['attack']);
+            $sent = null;
+            if ($attack > 0 && ! $opponent->topped_out) {
+                $sent = $opponent->incomingGarbage()->create([
+                    'lines' => $attack,
+                    'hole' => random_int(0, Board::WIDTH - 1),
+                    'created_at' => now(),
+                ]);
+            }
+
             $player->fillFromState($result['state'])->fill([
                 'last_active_at' => now(),
                 'last_seen_at' => now(),
                 'garbage_received' => $player->garbage_received + $garbage->sum('lines'),
-                'garbage_sent' => $player->garbage_sent + $result['attack'],
+                'garbage_sent' => $player->garbage_sent + ($sent?->lines ?? 0),
             ])->save();
 
             GarbageBatch::query()->whereKey($garbage->modelKeys())->update(['applied_at_piece' => $pieceNumber]);
@@ -94,17 +107,6 @@ class LockProcessor
                 'attack' => $result['attack'],
                 'at_ms' => max(0, $match->elapsedMs()),
             ]);
-
-            $opponent = $match->players()->where('id', '!=', $player->id)->lockForUpdate()->firstOrFail();
-
-            $sent = null;
-            if ($result['attack'] > 0 && ! $opponent->topped_out) {
-                $sent = $opponent->incomingGarbage()->create([
-                    'lines' => $result['attack'],
-                    'hole' => random_int(0, Board::WIDTH - 1),
-                    'created_at' => now(),
-                ]);
-            }
 
             if ($player->topped_out) {
                 $this->finisher->finish($match, $opponent, MatchFinisher::REASON_TOP_OUT);
@@ -130,8 +132,29 @@ class LockProcessor
             'cleared' => $result['cleared'],
             'attack' => $result['attack'],
             'sent' => $sent?->toClientArray(),
+            'pending_garbage' => $player->pendingGarbageForClient(),
             'match_over' => $player->topped_out,
         ];
+    }
+
+    /**
+     * Uses an attack to cancel the player's own pending garbage, oldest first.
+     *
+     * @return int the lines of attack used up
+     */
+    private function cancelIncomingGarbage(MatchPlayer $player, int $attack): int
+    {
+        $remaining = $attack;
+        foreach ($player->incomingGarbage()->pending()->get() as $batch) {
+            if ($remaining === 0) {
+                break;
+            }
+            $cancelled = min($batch->lines, $remaining);
+            $batch->decrement('lines', $cancelled);
+            $remaining -= $cancelled;
+        }
+
+        return $attack - $remaining;
     }
 
     /**
@@ -142,7 +165,7 @@ class LockProcessor
      */
     private function claimedGarbage(MatchPlayer $player, array $ids)
     {
-        $pending = $player->incomingGarbage()->whereNull('applied_at_piece')->limit(count($ids))->get();
+        $pending = $player->incomingGarbage()->pending()->limit(count($ids))->get();
 
         if ($pending->modelKeys() !== $ids) {
             throw new LockRejected('Garbage must rise oldest first and only once.', $player);
@@ -157,7 +180,7 @@ class LockProcessor
     private function ensureOverdueGarbageApplied(MatchPlayer $player, int $claimedCount): void
     {
         $overdue = $player->incomingGarbage()
-            ->whereNull('applied_at_piece')
+            ->pending()
             ->where('created_at', '<=', now()->subMilliseconds(Rules::GARBAGE_GRACE_MS)->format('Y-m-d H:i:s.v'))
             ->count();
 

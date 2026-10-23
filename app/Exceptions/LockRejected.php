@@ -26,8 +26,7 @@ class LockRejected extends RuntimeException implements ShouldntReport
         return response()->json([
             'message' => $this->getMessage(),
             'state' => $player?->stateForClient(),
-            'pending_garbage' => $player?->incomingGarbage()->whereNull('applied_at_piece')->get()
-                ->map->toClientArray()->all() ?? [],
+            'pending_garbage' => $player?->pendingGarbageForClient() ?? [],
         ], 409);
     }
 }

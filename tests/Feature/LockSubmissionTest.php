@@ -138,6 +138,41 @@ class LockSubmissionTest extends TestCase
         Event::assertDispatched(GarbageSent::class, fn (GarbageSent $event) => $event->batch->is($batch) && $event->fromUserId === $this->alice->id);
     }
 
+    public function test_an_attack_cancels_incoming_garbage_oldest_first_before_any_is_sent(): void
+    {
+        $alice = $this->player($this->alice);
+        $older = $alice->incomingGarbage()->create(['lines' => 2, 'hole' => 0, 'created_at' => now()]);
+        $newer = $alice->incomingGarbage()->create(['lines' => 3, 'hole' => 1, 'created_at' => now()]);
+        $this->arrange($this->alice, ['G.........', ...array_fill(0, 4, 'GGGGGGGGG.')], 'I');
+
+        // A tetris is worth 4 lines: 2 cancel the older batch, 2 come off the newer one.
+        $this->submit($this->alice, $this->lock(['rotation' => 1, 'x' => 7, 'y' => 18]))
+            ->assertOk()
+            ->assertJsonPath('attack', 4)
+            ->assertJsonPath('sent', null)
+            ->assertJsonPath('pending_garbage', [['id' => $newer->id, 'lines' => 1, 'hole' => 1]]);
+
+        $this->assertSame(0, $older->fresh()->lines);
+        $this->assertSame(1, $newer->fresh()->lines);
+        $this->assertSame(0, $this->player($this->alice)->garbage_sent);
+        $this->assertDatabaseMissing('garbage_batches', ['target_player_id' => $this->player($this->bob)->id]);
+        Event::assertNotDispatched(GarbageSent::class);
+    }
+
+    public function test_only_the_attack_left_after_cancelling_is_sent_and_counted(): void
+    {
+        $this->player($this->alice)->incomingGarbage()->create(['lines' => 3, 'hole' => 0, 'created_at' => now()]);
+        $this->arrange($this->alice, ['G.........', ...array_fill(0, 4, 'GGGGGGGGG.')], 'I');
+
+        $this->submit($this->alice, $this->lock(['rotation' => 1, 'x' => 7, 'y' => 18]))
+            ->assertOk()
+            ->assertJsonPath('sent.lines', 1)
+            ->assertJsonPath('pending_garbage', []);
+
+        $this->assertSame(1, $this->player($this->alice)->garbage_sent);
+        $this->assertSame(1, $this->player($this->bob)->incomingGarbage()->sole()->lines);
+    }
+
     public function test_incoming_garbage_rises_when_the_client_applies_it(): void
     {
         $batch = $this->player($this->bob)->incomingGarbage()->create(['lines' => 2, 'hole' => 4, 'created_at' => now()]);

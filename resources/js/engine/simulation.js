@@ -112,6 +112,34 @@ export function applyLock(state, randomizer, lock) {
     };
 }
 
+/**
+ * Uses an attack to cancel the attacker's own pending garbage, oldest batch first
+ * (mirrors cancelIncomingGarbage() in app/Services/LockProcessor.php).
+ *
+ * @returns {{ pending: { id, lines, hole }[], sent: number }} what is still pending, and the attack left to send
+ */
+export function cancelGarbage(pending, attack) {
+    let remaining = attack;
+    const left = [];
+    for (const batch of pending) {
+        const cancelled = Math.min(batch.lines, remaining);
+        remaining -= cancelled;
+        if (batch.lines > cancelled) left.push({ ...batch, lines: batch.lines - cancelled });
+    }
+    return { pending: left, sent: remaining };
+}
+
+/**
+ * Reconciles a client's pending garbage with the server's list from a lock response. The server's
+ * lines win (it may have cancelled more than the client knew about). A local batch the server
+ * no longer lists was cancelled, unless it is newer than anything the server listed: that one
+ * may have been sent after the response was built, so it is kept.
+ */
+export function mergePendingGarbage(server, local) {
+    const newest = Math.max(0, ...server.map((b) => b.id));
+    return [...server.map((b) => ({ ...b })), ...local.filter((b) => b.id > newest)];
+}
+
 /** The next `count` pieces after the current one. */
 export function preview(state, randomizer, count = 5) {
     return Array.from({ length: count }, (_, i) => randomizer.piece(state.nextIndex + i));

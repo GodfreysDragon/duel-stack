@@ -72,6 +72,16 @@ class MatchPlayer extends Model
     }
 
     /**
+     * Incoming garbage still waiting to rise, in the shape the client uses.
+     *
+     * @return list<array{id: int, lines: int, hole: int}>
+     */
+    public function pendingGarbageForClient(): array
+    {
+        return $this->incomingGarbage()->pending()->get()->map->toClientArray()->all();
+    }
+
+    /**
      * @return HasMany<MatchMove, $this>
      */
     public function moves(): HasMany
