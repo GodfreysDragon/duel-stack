@@ -1,16 +1,12 @@
 <script setup>
+import { computed } from 'vue';
 import AuthPanel from '../components/AuthPanel.vue';
 import { session } from '../lib/session';
+import { ACTIONS, keyLabel, settings } from '../lib/settings';
 
-const controls = [
-    ['← →', 'Move'],
-    ['↓', 'Soft drop'],
-    ['Space', 'Hard drop'],
-    ['↑ / X', 'Rotate right'],
-    ['Z / Ctrl', 'Rotate left'],
-    ['A', 'Rotate 180°'],
-    ['C / Shift', 'Hold'],
-];
+const controls = computed(() =>
+    ACTIONS.map(([action, label]) => [settings.bindings[action].map(keyLabel).join(' / ') || '—', label]),
+);
 </script>
 
 <template>
@@ -39,12 +35,15 @@ const controls = [
             <div class="max-w-lg rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
                 <h2 class="mb-3 text-sm font-semibold tracking-widest text-slate-400 uppercase">Controls</h2>
                 <dl class="grid grid-cols-2 gap-x-6 gap-y-1.5 text-sm">
-                    <template v-for="[key, action] in controls" :key="key">
+                    <template v-for="[key, action] in controls" :key="action">
                         <dt class="font-mono text-cyan-300">{{ key }}</dt>
                         <dd class="text-slate-300">{{ action }}</dd>
                     </template>
                 </dl>
-                <p class="mt-3 text-xs text-slate-500">On phones and tablets, on-screen buttons appear under the board.</p>
+                <p class="mt-3 text-xs text-slate-500">
+                    Change keys, DAS and ARR in <RouterLink to="/settings" class="text-cyan-300 hover:underline">Settings</RouterLink>. On phones and
+                    tablets, on-screen buttons appear under the board.
+                </p>
             </div>
         </section>
         <aside v-if="!session.user">

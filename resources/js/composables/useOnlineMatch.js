@@ -7,6 +7,7 @@ import { deserialize, emptyBoard, serialize } from '../engine/board.js';
 import { mergePendingGarbage } from '../engine/simulation.js';
 import { chooseMove } from '../engine/bot.js';
 import { pieceAlongLock } from '../engine/playback.js';
+import { settings } from '../lib/settings';
 import { sfx } from '../lib/sound';
 
 const ABANDON_AFTER_MS = 20000;
@@ -87,7 +88,7 @@ export function useOnlineMatch(matchId, { autopilot = false } = {}) {
                 toppedOut: opponent.value.topped_out,
             });
 
-            const g = new Game({ seed: data.match.seed, onLock, onTopOut: waitForResult });
+            const g = new Game({ seed: data.match.seed, onLock, onTopOut: waitForResult, handling: settings.handling });
             if (data.you.state.pieces > 0 || data.you.pending_garbage.length) {
                 g.resync(toEngineState(data.you.state), data.you.pending_garbage);
             }

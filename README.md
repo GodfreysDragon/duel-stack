@@ -27,7 +27,7 @@ MySQL 8 or SQLite
 - **A full modern ruleset:** SRS rotation with wall kicks, hold, a 5-piece preview, a ghost piece, DAS/ARR and lock
   delay. Attacks come from combos, back-to-back tetrises and perfect clears.
 - **Exact replays** of every finished match, with scrubbing, 0.5–4x speed and a board swap.
-- **Practice mode** against a local bot, keyboard controls, and touch controls on phones.
+- **Practice mode** against a local bot, rebindable keys with adjustable DAS and ARR, and touch controls on phones.
 
 ## How it works
 
@@ -157,7 +157,8 @@ E2E_URL=http://127.0.0.1:8040 npm run test:e2e
 ## Controls
 
 ← → move · ↓ soft drop · Space hard drop · ↑/X rotate right · Z/Ctrl rotate left · A rotate 180° · C/Shift hold.
-On touch devices, on-screen buttons appear under the board.
+Every key, DAS, ARR and the soft-drop speed can be changed on the Settings page; they are saved in the browser. On
+touch devices, on-screen buttons appear under the board.
 
 ## License
 

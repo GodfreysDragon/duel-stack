@@ -3,11 +3,14 @@ import { dropY, fits, isGrounded } from './board.js';
 import { Randomizer } from './randomizer.js';
 import { afterHold, applyLock, cancelGarbage, initialState, preview } from './simulation.js';
 
-const DAS_MS = 133;
-const ARR_MS = 33;
 const LOCK_DELAY_MS = 500;
 const MAX_LOCK_RESETS = 15;
-const SOFT_DROP_FACTOR = 20;
+
+/**
+ * Input handling a player can tune: DAS (ms before a held direction auto-repeats), ARR (ms between repeats;
+ * 0 moves straight to the wall) and the soft-drop speed as a multiple of gravity.
+ */
+export const DEFAULT_HANDLING = { das: 133, arr: 33, softDrop: 20 };
 
 /** Gravity in rows per second; ramps up every 30 seconds so matches end. */
 export function gravityAt(elapsedMs) {
@@ -20,7 +23,8 @@ export function gravityAt(elapsedMs) {
  * Rendering and networking listen through the callbacks.
  */
 export class Game {
-    constructor({ seed, onLock = () => {}, onTopOut = () => {} }) {
+    constructor({ seed, onLock = () => {}, onTopOut = () => {}, handling = {} }) {
+        this.handling = { ...DEFAULT_HANDLING, ...handling };
         this.randomizer = new Randomizer(seed);
         this.state = initialState(this.randomizer);
         this.onLock = onLock;
@@ -165,16 +169,16 @@ export class Game {
 
         if (this.dasDir) {
             this.dasTimer += dt;
-            if (this.dasTimer >= DAS_MS) {
+            if (this.dasTimer >= this.handling.das) {
                 this.arrTimer += dt;
-                while (this.arrTimer >= ARR_MS) {
-                    this.arrTimer -= ARR_MS;
+                while (this.arrTimer >= this.handling.arr) {
+                    this.arrTimer -= this.handling.arr;
                     if (!this.shift(this.dasDir === 'left' ? -1 : 1)) break;
                 }
             }
         }
 
-        const gravity = gravityAt(this.elapsed) * (this.held.down ? SOFT_DROP_FACTOR : 1);
+        const gravity = gravityAt(this.elapsed) * (this.held.down ? this.handling.softDrop : 1);
         this.gravityAcc += (gravity * dt) / 1000;
         while (this.gravityAcc >= 1) {
             this.gravityAcc -= 1;

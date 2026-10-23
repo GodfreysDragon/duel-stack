@@ -13,6 +13,7 @@ const router = createRouter({
         { path: '/leaderboard', name: 'leaderboard', component: () => import('./views/LeaderboardView.vue') },
         { path: '/players/:name', name: 'player', component: () => import('./views/ProfileView.vue'), props: true },
         { path: '/replay/:id', name: 'replay', component: () => import('./views/ReplayView.vue'), props: true },
+        { path: '/settings', name: 'settings', component: () => import('./views/SettingsView.vue') },
         { path: '/:pathMatch(.*)*', redirect: '/' },
     ],
 });

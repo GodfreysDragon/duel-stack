@@ -25,6 +25,7 @@ async function signOut() {
                 <div class="flex items-center gap-4 text-sm text-slate-400">
                     <RouterLink to="/leaderboard" class="hover:text-white" active-class="text-white">Leaderboard</RouterLink>
                     <RouterLink to="/practice" class="hover:text-white" active-class="text-white">Practice</RouterLink>
+                    <RouterLink to="/settings" class="hover:text-white" active-class="text-white">Settings</RouterLink>
                 </div>
                 <div class="ml-auto flex items-center gap-3 text-sm">
                     <button
