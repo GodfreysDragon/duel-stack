@@ -6,7 +6,7 @@ A real-time 1v1 block-stacking battle in the browser. Two players are matched by
 pieces. Every line you clear sends garbage rows into your opponent's board, and the first player to top out loses.
 If nobody else is queueing, a server-side bot steps in after 15 seconds. You can play as a guest in one click.
 
-**[Play the live demo →](https://stackduel.duckdns.org)**
+**[Play the live demo →](https://duelstack.duckdns.org)**
 
 ![A live ranked match: both boards update over WebSockets and garbage rises from the bottom](docs/media/live-match.gif)
 
