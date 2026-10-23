@@ -4,6 +4,7 @@
 # Installs Nginx, PHP 8.4, Node 22, Supervisor and Certbot, then deploys the app with SQLite.
 #
 # Usage, on the server:
+#   sudo apt-get update && sudo apt-get install -y git
 #   git clone https://github.com/GodfreysDragon/stack-duel.git /tmp/stack-duel
 #   sudo bash /tmp/stack-duel/deploy/setup.sh <domain> <email for Let's Encrypt>
 #

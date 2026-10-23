@@ -6,6 +6,8 @@ A real-time 1v1 block-stacking battle in the browser. Two players are matched by
 pieces. Every line you clear sends garbage rows into your opponent's board, and the first player to top out loses.
 If nobody else is queueing, a server-side bot steps in after 15 seconds. You can play as a guest in one click.
 
+**[Play the live demo →](https://stackduel.duckdns.org)**
+
 ![A live ranked match: both boards update over WebSockets and garbage rises from the bottom](docs/media/live-match.gif)
 
 **Stack:** Laravel 13 · PHP 8.4 · Laravel Reverb + Echo (WebSockets) · Vue 3 + Vue Router · PixiJS 8 · Tailwind 4 ·
@@ -116,6 +118,7 @@ Supervisor keeping Reverb and the bot daemon running, cron for the scheduler, SQ
 certificate. No queue worker is needed, because every broadcast is sent immediately.
 
 ```sh
+sudo apt-get update && sudo apt-get install -y git                                 # minimal images lack it
 git clone https://github.com/GodfreysDragon/stack-duel.git /tmp/stack-duel
 sudo bash /tmp/stack-duel/deploy/setup.sh stack-duel.example.com you@example.com   # once
 bash /var/www/stack-duel/deploy/update.sh                                          # each deploy
