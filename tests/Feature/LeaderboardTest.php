@@ -40,7 +40,16 @@ class LeaderboardTest extends TestCase
         $this->getJson('/api/players/zed')
             ->assertOk()
             ->assertJsonPath('user.wins', 2)
-            ->assertJsonPath('rank', 2);
+            ->assertJsonPath('rank', 2)
+            ->assertJsonPath('live_match_id', null);
+    }
+
+    public function test_a_profile_links_to_the_match_the_player_is_in(): void
+    {
+        $user = User::factory()->create(['name' => 'zed']);
+        $live = GameMatch::factory()->between($user, User::factory()->create())->create();
+
+        $this->getJson('/api/players/zed')->assertOk()->assertJsonPath('live_match_id', $live->id);
     }
 
     public function test_a_players_finished_matches_are_listed_newest_first_a_page_at_a_time(): void

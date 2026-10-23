@@ -11,8 +11,8 @@ use Illuminate\Contracts\Broadcasting\ShouldRescue;
 use Illuminate\Foundation\Events\Dispatchable;
 
 /**
- * A player's board after a lock the server accepted, for the opponent's view.
- * Bots send no falling-piece whispers, so the opponent's client animates the lock instead.
+ * A player's board after a lock the server accepted, for the opponent and any spectators.
+ * Where no falling-piece whispers arrive (from a bot, or for a spectator) the client animates the lock instead.
  */
 class BoardUpdated implements ShouldBroadcastNow, ShouldRescue
 {
@@ -28,7 +28,10 @@ class BoardUpdated implements ShouldBroadcastNow, ShouldRescue
      */
     public function broadcastOn(): array
     {
-        return [new PresenceChannel("match.{$this->player->game_match_id}")];
+        return [
+            new PresenceChannel("match.{$this->player->game_match_id}"),
+            new Channel("match.{$this->player->game_match_id}.watch"),
+        ];
     }
 
     public function broadcastAs(): string
@@ -49,6 +52,8 @@ class BoardUpdated implements ShouldBroadcastNow, ShouldRescue
             'pieces' => $this->player->pieces,
             'garbage_sent' => $this->player->garbage_sent,
             'topped_out' => $this->player->topped_out,
+            'hold' => $this->player->hold,
+            'next_index' => $this->player->next_index,
             'lock' => $this->lock,
         ];
     }

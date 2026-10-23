@@ -26,6 +26,8 @@ class MatchPlayerResource extends JsonResource
             'garbage_sent' => $this->garbage_sent,
             'garbage_received' => $this->garbage_received,
             'topped_out' => $this->topped_out,
+            'hold' => $this->hold,
+            'next_index' => $this->next_index,
             'rating_before' => $this->rating_before,
             'rating_after' => $this->rating_after,
         ];

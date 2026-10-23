@@ -1,11 +1,15 @@
 <script setup>
-import { ref, watchEffect } from 'vue';
+import { onBeforeUnmount, onMounted, ref, watchEffect } from 'vue';
 import { api } from '../lib/api';
 import { session } from '../lib/session';
+
+const LIVE_REFRESH_MS = 10000;
 
 const sort = ref('rating');
 const players = ref([]);
 const loading = ref(true);
+const live = ref([]);
+let liveTimer = null;
 
 watchEffect(async () => {
     loading.value = true;
@@ -13,11 +17,38 @@ watchEffect(async () => {
     loading.value = false;
 });
 
+async function refreshLive() {
+    live.value = await api('GET', '/api/matches/live').catch(() => live.value);
+}
+
+onMounted(() => {
+    refreshLive();
+    liveTimer = setInterval(refreshLive, LIVE_REFRESH_MS);
+});
+onBeforeUnmount(() => clearInterval(liveTimer));
+
 const winRate = (p) => (p.games_played ? Math.round((p.wins / p.games_played) * 100) : 0);
 </script>
 
 <template>
     <div class="mx-auto max-w-3xl">
+        <section v-if="live.length" class="mb-8" data-testid="live-matches">
+            <h2 class="mb-2 flex items-center gap-2 text-sm font-semibold tracking-widest text-slate-400 uppercase">
+                <span class="size-2 animate-pulse rounded-full bg-red-500" aria-hidden="true"></span>
+                Live now
+            </h2>
+            <ul class="divide-y divide-slate-800 rounded-2xl border border-slate-800">
+                <li v-for="match in live" :key="match.id" class="flex flex-wrap items-center gap-3 px-4 py-3 text-sm">
+                    <span class="font-medium">{{ match.players[0].user.name }}</span>
+                    <span class="font-mono text-xs text-slate-500">{{ match.players[0].rating_before }}</span>
+                    <span class="text-slate-500">vs</span>
+                    <span class="font-medium">{{ match.players[1].user.name }}</span>
+                    <span class="font-mono text-xs text-slate-500">{{ match.players[1].rating_before }}</span>
+                    <RouterLink :to="`/watch/${match.id}`" class="ml-auto text-cyan-300 hover:underline">Watch</RouterLink>
+                </li>
+            </ul>
+        </section>
+
         <div class="mb-4 flex flex-wrap items-center gap-3">
             <h1 class="text-2xl font-bold">Leaderboard</h1>
             <div class="ml-auto flex gap-1 rounded-lg bg-slate-900 p-1 text-sm">

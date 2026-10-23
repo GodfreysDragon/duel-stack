@@ -37,6 +37,14 @@ function outcome(match) {
         <div class="flex flex-wrap items-baseline gap-3">
             <h1 class="text-3xl font-bold">{{ profile.user.name }}</h1>
             <span v-if="profile.rank" class="rounded bg-slate-800 px-2 py-0.5 text-sm text-slate-300">Rank #{{ profile.rank }}</span>
+            <RouterLink
+                v-if="profile.live_match_id && profile.user.id !== session.user?.id"
+                :to="`/watch/${profile.live_match_id}`"
+                class="ml-auto flex items-center gap-2 text-sm font-semibold text-red-400 hover:text-red-300"
+            >
+                <span class="size-2 animate-pulse rounded-full bg-red-500" aria-hidden="true"></span>
+                Watch live
+            </RouterLink>
         </div>
         <dl class="grid grid-cols-2 gap-3 sm:grid-cols-5">
             <div v-for="[label, value] in [

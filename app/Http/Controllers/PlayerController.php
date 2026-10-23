@@ -14,7 +14,7 @@ class PlayerController extends Controller
     public const MATCHES_PER_PAGE = 15;
 
     /**
-     * A player's profile: lifetime stats and leaderboard rank.
+     * A player's profile: lifetime stats, leaderboard rank and the match they are playing, if any.
      */
     public function show(User $user): JsonResponse
     {
@@ -25,6 +25,7 @@ class PlayerController extends Controller
         return response()->json([
             'user' => UserResource::make($user),
             'rank' => $rank,
+            'live_match_id' => $user->activeMatch()?->id,
         ]);
     }
 

@@ -11,7 +11,7 @@ use Illuminate\Contracts\Broadcasting\ShouldRescue;
 use Illuminate\Foundation\Events\Dispatchable;
 
 /**
- * The final result, with rating changes, sent to both players.
+ * The final result, with rating changes, sent to both players and any spectators.
  */
 class MatchEnded implements ShouldBroadcastNow, ShouldRescue
 {
@@ -24,7 +24,7 @@ class MatchEnded implements ShouldBroadcastNow, ShouldRescue
      */
     public function broadcastOn(): array
     {
-        return [new PresenceChannel("match.{$this->match->id}")];
+        return [new PresenceChannel("match.{$this->match->id}"), new Channel("match.{$this->match->id}.watch")];
     }
 
     public function broadcastAs(): string

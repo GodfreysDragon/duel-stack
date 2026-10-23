@@ -81,6 +81,9 @@ class BroadcastChannelTest extends TestCase
         $this->assertSame("presence-match.{$this->match->id}", (string) (new BoardUpdated($player))->broadcastOn()[0]);
         $this->assertSame("presence-match.{$this->match->id}", (string) (new GarbageSent($this->match, $batch, $this->bob->id))->broadcastOn()[0]);
         $this->assertSame("presence-match.{$this->match->id}", (string) (new MatchEnded($this->match))->broadcastOn()[0]);
+        // Spectators follow boards and the result on a public channel.
+        $this->assertSame("match.{$this->match->id}.watch", (string) (new BoardUpdated($player))->broadcastOn()[1]);
+        $this->assertSame("match.{$this->match->id}.watch", (string) (new MatchEnded($this->match))->broadcastOn()[1]);
 
         $this->assertSame(
             ['from_user_id' => $this->bob->id, 'batch' => ['id' => $batch->id, 'lines' => 2, 'hole' => 5]],

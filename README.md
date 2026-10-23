@@ -25,8 +25,10 @@ MySQL 8 or SQLite
 - **House bots.** A player left alone for 15 seconds is paired with the closest-rated bot: Rookie, Club or Pro. Bots
   play on the server under exactly the same rules as players.
 - **A full modern ruleset:** SRS rotation with wall kicks, hold, a 5-piece preview, a ghost piece, DAS/ARR and lock
-  delay. Attacks come from combos, back-to-back tetrises and perfect clears.
+  delay. Attacks come from combos, back-to-back tetrises and perfect clears, and cancel incoming garbage first.
 - **Exact replays** of every finished match, with scrubbing, 0.5–4x speed and a board swap.
+- **Spectator mode.** Anyone can watch a live match from the leaderboard's "Live now" list or a player's profile. Both
+  boards follow a public channel, and each lock is played back as a falling piece.
 - **Practice mode** against a local bot, rebindable keys with adjustable DAS and ARR, and touch controls on phones.
 
 ## How it works

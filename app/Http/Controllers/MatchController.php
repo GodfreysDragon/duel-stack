@@ -10,12 +10,15 @@ use App\Services\LockProcessor;
 use App\Services\MatchFinisher;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 
 class MatchController extends Controller
 {
+    public const LIVE_LIST_SIZE = 20;
+
     /**
      * The match, plus (for a player) their own authoritative state to resume from after a reload.
      */
@@ -89,6 +92,28 @@ class MatchController extends Controller
 
             return response()->json(['match' => MatchResource::make($match->load('players.user'))]);
         });
+    }
+
+    /**
+     * Matches being played right now, newest first, for spectators to pick from.
+     */
+    public function live(): AnonymousResourceCollection
+    {
+        $matches = GameMatch::query()->active()->with('players.user')->latest('id')->limit(self::LIVE_LIST_SIZE)->get();
+
+        return MatchResource::collection($matches);
+    }
+
+    /**
+     * Any match, live or finished, as a spectator sees it: both boards, but no player's private resume state.
+     * Live updates follow on the public match.{id}.watch channel.
+     */
+    public function watch(GameMatch $match): JsonResponse
+    {
+        return response()->json([
+            'match' => MatchResource::make($match->load('players.user')),
+            'server_time' => now()->format('Y-m-d\TH:i:s.vP'),
+        ]);
     }
 
     /**

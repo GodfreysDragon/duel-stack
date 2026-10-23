@@ -1,6 +1,6 @@
 <script setup>
 import { computed, watch } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import GameStage from '../components/GameStage.vue';
 import PlayerHud from '../components/PlayerHud.vue';
 import ResultCard from '../components/ResultCard.vue';
@@ -12,6 +12,7 @@ import { refreshSession, session } from '../lib/session';
 
 const props = defineProps({ id: { type: String, required: true } });
 const route = useRoute();
+const router = useRouter();
 
 // ?autopilot=1 lets the bot play this side of a real match, for the end-to-end test. It is compiled out of
 // production builds; the server cannot tell a bot-driven client apart anyway (see README, "Security model").
@@ -25,6 +26,7 @@ const idleSeconds = computed(() => Math.floor(online.opponentIdleMs() / 1000));
 
 watch(status, (value) => {
     if (value === 'finished') refreshSession();
+    if (value === 'spectating') router.replace({ name: 'watch', params: { id: props.id } });
 });
 
 function confirmForfeit() {

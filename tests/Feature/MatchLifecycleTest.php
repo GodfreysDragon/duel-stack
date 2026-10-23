@@ -55,6 +55,30 @@ class MatchLifecycleTest extends TestCase
         $this->actingAs($outsider)->getJson("/api/matches/{$this->match->id}")->assertOk()->assertJsonPath('you', null);
     }
 
+    public function test_anyone_can_watch_a_live_match_without_the_players_private_state(): void
+    {
+        $this->match->players()->firstOrFail()->update(['board' => str_repeat('.', 210).'GGGGGGGGG.', 'hold' => 'T']);
+
+        $this->getJson("/api/matches/{$this->match->id}/watch")
+            ->assertOk()
+            ->assertJsonPath('match.status', GameMatch::STATUS_ACTIVE)
+            ->assertJsonPath('match.players.0.board', str_repeat('.', 210).'GGGGGGGGG.')
+            ->assertJsonPath('match.players.0.hold', 'T')
+            ->assertJsonMissingPath('you')
+            ->assertJsonStructure(['server_time']);
+    }
+
+    public function test_live_matches_are_listed_for_spectators(): void
+    {
+        GameMatch::factory()->finished()->between(User::factory()->create(), User::factory()->create())->create();
+
+        $this->getJson('/api/matches/live')
+            ->assertOk()
+            ->assertJsonCount(1)
+            ->assertJsonPath('0.id', $this->match->id)
+            ->assertJsonPath('0.players.0.user.name', $this->alice->name);
+    }
+
     public function test_forfeiting_hands_the_win_to_the_opponent(): void
     {
         $this->actingAs($this->alice)->postJson("/api/matches/{$this->match->id}/forfeit")
