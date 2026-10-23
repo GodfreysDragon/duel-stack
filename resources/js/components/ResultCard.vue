@@ -26,7 +26,7 @@ const delta = (p) => (p.rating_after ?? p.rating_before) - p.rating_before;
 </script>
 
 <template>
-    <div class="rounded-2xl border border-slate-700 bg-slate-900/95 p-6 shadow-2xl" data-testid="result-card">
+    <div class="rounded-2xl border border-slate-700 bg-slate-900/95 p-6 shadow-2xl max-sm:p-4" data-testid="result-card">
         <p class="text-center text-sm tracking-widest text-slate-400 uppercase">Match over</p>
         <h2
             class="mt-1 text-center text-4xl font-bold"
@@ -41,10 +41,10 @@ const delta = (p) => (p.rating_after ?? p.rating_before) - p.rating_before;
             <thead class="text-left text-xs text-slate-500 uppercase">
                 <tr>
                     <th class="pb-2 font-medium">Player</th>
-                    <th class="pb-2 text-right font-medium">Score</th>
-                    <th class="pb-2 text-right font-medium">Lines</th>
-                    <th class="pb-2 text-right font-medium">Sent</th>
-                    <th class="pb-2 text-right font-medium">Rating</th>
+                    <th class="pb-2 pl-3 text-right font-medium">Score</th>
+                    <th class="pb-2 pl-3 text-right font-medium">Lines</th>
+                    <th class="pb-2 pl-3 text-right font-medium">Sent</th>
+                    <th class="pb-2 pl-3 text-right font-medium">Rating</th>
                 </tr>
             </thead>
             <tbody>
@@ -52,12 +52,12 @@ const delta = (p) => (p.rating_after ?? p.rating_before) - p.rating_before;
                     <td class="py-2 font-medium">
                         {{ p.user.name }}<span v-if="p.user.id === match.winner_id" class="ml-1 text-yellow-300">★</span>
                     </td>
-                    <td class="py-2 text-right font-mono">{{ p.score.toLocaleString() }}</td>
-                    <td class="py-2 text-right font-mono">{{ p.lines }}</td>
-                    <td class="py-2 text-right font-mono">{{ p.garbage_sent }}</td>
-                    <td class="py-2 text-right font-mono">
+                    <td class="py-2 pl-3 text-right font-mono">{{ p.score.toLocaleString() }}</td>
+                    <td class="py-2 pl-3 text-right font-mono">{{ p.lines }}</td>
+                    <td class="py-2 pl-3 text-right font-mono">{{ p.garbage_sent }}</td>
+                    <td class="py-2 pl-3 text-right font-mono">
                         {{ p.rating_after ?? p.rating_before }}
-                        <span :class="delta(p) > 0 ? 'text-green-400' : delta(p) < 0 ? 'text-red-400' : 'text-slate-500'" data-testid="rating-delta">
+                        <span class="whitespace-nowrap" :class="delta(p) > 0 ? 'text-green-400' : delta(p) < 0 ? 'text-red-400' : 'text-slate-500'" data-testid="rating-delta">
                             ({{ delta(p) > 0 ? '+' : '' }}{{ delta(p) }})
                         </span>
                     </td>
