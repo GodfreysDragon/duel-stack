@@ -6,16 +6,21 @@ import { BoardView } from '../render/BoardView';
 /**
  * Hosts the PixiJS canvas: the local board with hold/next panels and a
  * smaller opponent board. `frame(dtMs)` is called on every tick and returns
- * { me, opponent } views for BoardView.update().
+ * { me, opponent } views for BoardView.update(). The canvas shrinks to fit the width it is given, and with
+ * `fit` on a touch screen the height too (the parent must then have a height: see fitScreen in app.js).
  */
 const props = defineProps({
     frame: { type: Function, required: true },
+    fit: { type: Boolean, default: false },
 });
 
 const COMPACT_BELOW_PX = 640;
+const MAX_FIT_SCALE = 1.4;
 
 const host = ref(null);
+const fitHeight = props.fit && window.matchMedia('(pointer: coarse)').matches;
 let app = null;
+let resizer = null;
 let destroyed = false;
 
 onMounted(async () => {
@@ -41,14 +46,25 @@ onMounted(async () => {
         opponent.position.set(me.totalW + 28, me.totalH - opponent.totalH);
     }
     app.stage.addChild(me, opponent);
-    app.renderer.resize(Math.max(me.totalW, opponent.x + opponent.totalW) + 4, me.totalH + 4);
+    const width = Math.max(me.totalW, opponent.x + opponent.totalW) + 4;
+    const height = me.totalH + 4;
+    app.renderer.resize(width, height);
     app.stage.position.set(2, 2);
 
-    // autoDensity sets an inline pixel height, which would squash the canvas when max-w-full narrows it.
-    app.canvas.style.removeProperty('height');
-    app.canvas.classList.add('block', 'h-auto', 'max-w-full');
+    app.canvas.classList.add('block');
     app.canvas.dataset.testid = 'game-canvas';
     host.value.appendChild(app.canvas);
+
+    // Smaller when the space is. Larger only to fill a tall phone screen, by no more than the canvas resolution allows.
+    const maxScale = fitHeight ? MAX_FIT_SCALE : 1;
+    const fitCanvas = () => {
+        const scale = Math.min(maxScale, host.value.clientWidth / width, fitHeight ? host.value.clientHeight / height : 1);
+        app.canvas.style.width = `${Math.floor(width * scale)}px`;
+        app.canvas.style.height = `${Math.floor(height * scale)}px`;
+    };
+    fitCanvas();
+    resizer = new ResizeObserver(fitCanvas);
+    resizer.observe(host.value);
 
     app.ticker.add((ticker) => {
         const view = props.frame(ticker.deltaMS);
@@ -59,10 +75,11 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
     destroyed = true;
+    resizer?.disconnect();
     app?.destroy(true, { children: true });
 });
 </script>
 
 <template>
-    <div ref="host" class="flex justify-center"></div>
+    <div ref="host" class="flex justify-center" :class="{ 'h-full': fitHeight }"></div>
 </template>

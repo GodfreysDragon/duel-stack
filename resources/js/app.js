@@ -5,11 +5,12 @@ import { refreshSession, session } from './lib/session';
 
 const router = createRouter({
     history: createWebHistory(),
+    // fitScreen: on touch screens the page fills the window exactly, so a game and its buttons never scroll.
     routes: [
         { path: '/', name: 'home', component: () => import('./views/HomeView.vue') },
         { path: '/play', name: 'play', component: () => import('./views/PlayView.vue'), meta: { auth: true } },
-        { path: '/match/:id', name: 'match', component: () => import('./views/MatchView.vue'), meta: { auth: true }, props: true },
-        { path: '/practice', name: 'practice', component: () => import('./views/PracticeView.vue') },
+        { path: '/match/:id', name: 'match', component: () => import('./views/MatchView.vue'), meta: { auth: true, fitScreen: true }, props: true },
+        { path: '/practice', name: 'practice', component: () => import('./views/PracticeView.vue'), meta: { fitScreen: true } },
         { path: '/leaderboard', name: 'leaderboard', component: () => import('./views/LeaderboardView.vue') },
         { path: '/players/:name', name: 'player', component: () => import('./views/ProfileView.vue'), props: true },
         { path: '/replay/:id', name: 'replay', component: () => import('./views/ReplayView.vue'), props: true },

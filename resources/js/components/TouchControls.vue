@@ -14,12 +14,12 @@ const buttons = [
 </script>
 
 <template>
-    <div class="mx-auto mt-4 grid max-w-sm grid-cols-4 gap-2 select-none [@media(pointer:fine)]:hidden">
+    <div class="mx-auto mt-4 grid w-full max-w-sm shrink-0 grid-cols-4 gap-2 select-none pointer-coarse:mt-2 pointer-fine:hidden">
         <button
             v-for="button in buttons"
             :key="button.action"
             type="button"
-            class="rounded-xl bg-slate-800 py-4 text-lg font-semibold text-slate-200 active:bg-slate-700"
+            class="rounded-xl bg-slate-800 py-3 text-lg font-semibold text-slate-200 active:bg-slate-700"
             :class="{ 'col-span-2': button.action === 'down' }"
             @pointerdown.prevent="emit('press', button.action)"
             @pointerup.prevent="emit('release', button.action)"
