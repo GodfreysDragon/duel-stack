@@ -16,6 +16,7 @@ Route::prefix('api')->name('api.')->group(function () {
 
     Route::get('leaderboard', LeaderboardController::class)->name('leaderboard');
     Route::get('players/{user:name}', [PlayerController::class, 'show'])->name('players.show');
+    Route::get('players/{user:name}/matches', [PlayerController::class, 'matches'])->name('players.matches');
     Route::get('matches/{match}/replay', [MatchController::class, 'replay'])->name('matches.replay');
 
     Route::middleware('auth')->group(function () {

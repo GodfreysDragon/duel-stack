@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Http\Controllers\PlayerController;
 use App\Models\GameMatch;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -31,20 +32,36 @@ class LeaderboardTest extends TestCase
         $this->getJson('/api/leaderboard?sort=password')->assertJsonValidationErrors('sort');
     }
 
-    public function test_a_profile_shows_stats_rank_and_recent_finished_matches(): void
+    public function test_a_profile_shows_stats_and_rank(): void
     {
-        $user = User::factory()->create(['name' => 'zed', 'rating' => 1200, 'games_played' => 2, 'wins' => 2]);
-        $opponent = User::factory()->create(['rating' => 1300, 'games_played' => 2]);
-        $finished = GameMatch::factory()->finished()->between($user, $opponent)->create(['winner_id' => $user->id]);
-        GameMatch::factory()->between($user, $opponent)->create(); // still live: not listed
+        User::factory()->create(['name' => 'zed', 'rating' => 1200, 'games_played' => 2, 'wins' => 2]);
+        User::factory()->create(['rating' => 1300, 'games_played' => 2]);
 
         $this->getJson('/api/players/zed')
             ->assertOk()
             ->assertJsonPath('user.wins', 2)
-            ->assertJsonPath('rank', 2)
-            ->assertJsonCount(1, 'recent_matches')
-            ->assertJsonPath('recent_matches.0.id', $finished->id)
-            ->assertJsonPath('recent_matches.0.winner_id', $user->id);
+            ->assertJsonPath('rank', 2);
+    }
+
+    public function test_a_players_finished_matches_are_listed_newest_first_a_page_at_a_time(): void
+    {
+        $user = User::factory()->create(['name' => 'zed']);
+        $opponent = User::factory()->create();
+        $finished = GameMatch::factory(PlayerController::MATCHES_PER_PAGE + 2)->finished()->between($user, $opponent)->create();
+        GameMatch::factory()->between($user, $opponent)->create(); // still live: not listed
+        GameMatch::factory()->finished()->between($opponent, User::factory()->create())->create(); // someone else's
+
+        $this->getJson('/api/players/zed/matches')
+            ->assertOk()
+            ->assertJsonCount(PlayerController::MATCHES_PER_PAGE, 'data')
+            ->assertJsonPath('data.0.id', $finished->last()->id)
+            ->assertJsonPath('meta.total', PlayerController::MATCHES_PER_PAGE + 2)
+            ->assertJsonPath('meta.last_page', 2);
+
+        $this->getJson('/api/players/zed/matches?page=2')
+            ->assertOk()
+            ->assertJsonCount(2, 'data')
+            ->assertJsonPath('data.1.id', $finished->first()->id);
     }
 
     public function test_an_unknown_player_is_not_found(): void

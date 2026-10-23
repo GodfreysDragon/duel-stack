@@ -5,11 +5,18 @@ import { session } from '../lib/session';
 
 const props = defineProps({ name: { type: String, required: true } });
 const profile = ref(null);
+const history = ref(null); // one page of finished matches: { data, meta }
 const error = ref(null);
+
+const playerUrl = () => `/api/players/${encodeURIComponent(props.name)}`;
+
+async function loadPage(page) {
+    history.value = await api('GET', `${playerUrl()}/matches?page=${page}`);
+}
 
 onMounted(async () => {
     try {
-        profile.value = await api('GET', `/api/players/${encodeURIComponent(props.name)}`);
+        [profile.value] = await Promise.all([api('GET', playerUrl()), loadPage(1)]);
     } catch (e) {
         error.value = e.status === 404 ? 'No such player.' : e.message;
     }
@@ -45,9 +52,9 @@ function outcome(match) {
         </dl>
 
         <section>
-            <h2 class="mb-2 text-sm font-semibold tracking-widest text-slate-400 uppercase">Recent matches</h2>
-            <ul class="divide-y divide-slate-800 rounded-2xl border border-slate-800">
-                <li v-for="match in profile.recent_matches" :key="match.id" class="flex flex-wrap items-center gap-3 px-4 py-3 text-sm">
+            <h2 class="mb-2 text-sm font-semibold tracking-widest text-slate-400 uppercase">Match history</h2>
+            <ul class="divide-y divide-slate-800 rounded-2xl border border-slate-800" data-testid="match-history">
+                <li v-for="match in history.data" :key="match.id" class="flex flex-wrap items-center gap-3 px-4 py-3 text-sm">
                     <template v-for="o in [outcome(match)]" :key="match.id">
                         <span
                             class="w-12 rounded px-2 py-0.5 text-center text-xs font-bold"
@@ -66,8 +73,27 @@ function outcome(match) {
                         <RouterLink :to="`/replay/${match.id}`" class="ml-auto text-cyan-300 hover:underline">Replay</RouterLink>
                     </template>
                 </li>
-                <li v-if="profile.recent_matches.length === 0" class="px-4 py-6 text-center text-slate-500">No finished matches yet.</li>
+                <li v-if="history.data.length === 0" class="px-4 py-6 text-center text-slate-500">No finished matches yet.</li>
             </ul>
+            <nav v-if="history.meta.last_page > 1" class="mt-3 flex items-center justify-between gap-3 text-sm" aria-label="Match history pages">
+                <button
+                    type="button"
+                    class="rounded-lg border border-slate-700 px-3 py-1.5 hover:bg-slate-800 disabled:opacity-40 disabled:hover:bg-transparent"
+                    :disabled="history.meta.current_page === 1"
+                    @click="loadPage(history.meta.current_page - 1)"
+                >
+                    Newer
+                </button>
+                <span class="text-slate-500">Page {{ history.meta.current_page }} of {{ history.meta.last_page }}</span>
+                <button
+                    type="button"
+                    class="rounded-lg border border-slate-700 px-3 py-1.5 hover:bg-slate-800 disabled:opacity-40 disabled:hover:bg-transparent"
+                    :disabled="history.meta.current_page === history.meta.last_page"
+                    @click="loadPage(history.meta.current_page + 1)"
+                >
+                    Older
+                </button>
+            </nav>
         </section>
     </div>
 </template>
