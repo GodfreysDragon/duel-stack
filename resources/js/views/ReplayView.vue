@@ -77,7 +77,8 @@ function view(slot) {
         board: f.state.board,
         hold: f.state.hold,
         next: preview(f.state, f.randomizer, 5),
-        clear: f.cleared.length ? { rows: f.cleared, at: performance.now() - Math.min(220, (time.value - f.at) / speed.value) } : null,
+        // Timed in match time, so the flash slows down, speeds up and pauses with the replay.
+        clear: f.cleared.length ? { rows: f.cleared, at: performance.now() - (time.value - f.at) } : null,
         toppedOut: f.state.toppedOut,
     };
 }
