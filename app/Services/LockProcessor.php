@@ -8,6 +8,7 @@ use App\Exceptions\LockRejected;
 use App\Game\Board;
 use App\Game\InvalidLock;
 use App\Game\Randomizer;
+use App\Game\Reachability;
 use App\Game\Rules;
 use App\Game\Simulation;
 use App\Models\GameMatch;
@@ -51,6 +52,10 @@ class LockProcessor
             if ($input['piece_number'] !== $player->pieces) {
                 throw new LockRejected("Expected piece #{$player->pieces}, got #{$input['piece_number']}.", $player);
             }
+            $allowed = Rules::MAX_PIECES_PER_SECOND * max(0, $match->elapsedMs()) / 1000 + Rules::PACE_ALLOWANCE_PIECES;
+            if ($player->pieces + 1 > $allowed) {
+                throw new LockRejected('Pieces are arriving faster than anyone can play.', $player);
+            }
 
             $garbage = $this->claimedGarbage($player, $input['garbage_ids']);
             $garbageRows = $garbage->map(fn (GarbageBatch $batch) => ['lines' => $batch->lines, 'hole' => $batch->hole])->all();
@@ -66,6 +71,9 @@ class LockProcessor
                 ]);
             } catch (InvalidLock $e) {
                 throw new LockRejected($e->getMessage(), $player);
+            }
+            if (! Reachability::canReach($player->toState()->board, $input['piece'], $input['rotation'], $input['x'], $input['y'])) {
+                throw new LockRejected('No sequence of moves reaches that position.', $player);
             }
 
             if ($result['cleared'] === []) {

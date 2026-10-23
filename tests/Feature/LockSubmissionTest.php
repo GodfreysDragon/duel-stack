@@ -119,6 +119,30 @@ class LockSubmissionTest extends TestCase
         $this->submit(User::factory()->create(), $this->lock())->assertForbidden();
     }
 
+    public function test_a_lock_no_sequence_of_moves_could_reach_is_rejected(): void
+    {
+        $this->arrange($this->alice, ['GGGGGGGGGG', '....GGGGGG', 'GGGGGGGGGG'], 'I');
+
+        $this->submit($this->alice, $this->lock(['x' => 0, 'y' => 19]))
+            ->assertConflict()
+            ->assertJsonPath('message', 'No sequence of moves reaches that position.');
+
+        $this->assertDatabaseEmpty('match_moves');
+    }
+
+    public function test_locks_faster_than_anyone_can_play_are_rejected(): void
+    {
+        // The match started 5 seconds ago: 5 pieces a second plus the head start allows 40 pieces so far.
+        $this->arrange($this->alice, [], 'I', ['pieces' => 40]);
+
+        $this->submit($this->alice, $this->lock(['piece_number' => 40]))
+            ->assertConflict()
+            ->assertJsonPath('message', 'Pieces are arriving faster than anyone can play.');
+
+        $this->travel(1)->seconds();
+        $this->submit($this->alice, $this->lock(['piece_number' => 40]))->assertOk();
+    }
+
     public function test_malformed_locks_fail_validation(): void
     {
         $this->submit($this->alice, $this->lock(['piece' => 'X', 'rotation' => 7, 'garbage_ids' => null]))

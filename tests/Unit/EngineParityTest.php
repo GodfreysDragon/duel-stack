@@ -2,8 +2,10 @@
 
 namespace Tests\Unit;
 
+use App\Game\Pieces;
 use App\Game\PlayerState;
 use App\Game\Randomizer;
+use App\Game\Reachability;
 use App\Game\Simulation;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -63,6 +65,10 @@ class EngineParityTest extends TestCase
         $state = PlayerState::initial($randomizer);
 
         foreach ($locks as $number => ['lock' => $lock, 'expect' => $expect]) {
+            $this->assertTrue(
+                Reachability::canReach($state->board, $lock['piece'], $lock['rotation'], $lock['x'], $lock['y']),
+                "Lock #{$number} would be rejected as unreachable.",
+            );
             $result = Simulation::applyLock($state, $randomizer, $lock);
             $state = $result['state'];
 
@@ -80,6 +86,15 @@ class EngineParityTest extends TestCase
                 'cleared' => $result['cleared'],
                 'attack' => $result['attack'],
             ], "Lock #{$number} diverged.");
+        }
+    }
+
+    public function test_the_srs_kick_tables_match_the_js_engine(): void
+    {
+        foreach (self::fixture()['kicks'] as $turn => $kicks) {
+            [$type, $from, $to] = [$turn[0], (int) $turn[1], (int) $turn[3]];
+
+            $this->assertSame($kicks, Pieces::kicks($type, $from, $to), "Kicks for {$turn} differ.");
         }
     }
 }

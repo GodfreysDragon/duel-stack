@@ -28,8 +28,50 @@ final class Pieces
         'Z' => ['size' => 3, 'cells' => [[0, 0], [1, 0], [1, 1], [2, 1]]],
     ];
 
+    /**
+     * SRS wall kicks (y-down), keyed "from>to", tried in order on each rotation.
+     *
+     * @var array<string, list<array{int, int}>>
+     */
+    private const KICKS_JLSTZ = [
+        '0>1' => [[0, 0], [-1, 0], [-1, -1], [0, 2], [-1, 2]],
+        '1>0' => [[0, 0], [1, 0], [1, 1], [0, -2], [1, -2]],
+        '1>2' => [[0, 0], [1, 0], [1, 1], [0, -2], [1, -2]],
+        '2>1' => [[0, 0], [-1, 0], [-1, -1], [0, 2], [-1, 2]],
+        '2>3' => [[0, 0], [1, 0], [1, -1], [0, 2], [1, 2]],
+        '3>2' => [[0, 0], [-1, 0], [-1, 1], [0, -2], [-1, -2]],
+        '3>0' => [[0, 0], [-1, 0], [-1, 1], [0, -2], [-1, -2]],
+        '0>3' => [[0, 0], [1, 0], [1, -1], [0, 2], [1, 2]],
+    ];
+
+    /** @var array<string, list<array{int, int}>> */
+    private const KICKS_I = [
+        '0>1' => [[0, 0], [-2, 0], [1, 0], [-2, 1], [1, -2]],
+        '1>0' => [[0, 0], [2, 0], [-1, 0], [2, -1], [-1, 2]],
+        '1>2' => [[0, 0], [-1, 0], [2, 0], [-1, -2], [2, 1]],
+        '2>1' => [[0, 0], [1, 0], [-2, 0], [1, 2], [-2, -1]],
+        '2>3' => [[0, 0], [2, 0], [-1, 0], [2, -1], [-1, 2]],
+        '3>2' => [[0, 0], [-2, 0], [1, 0], [-2, 1], [1, -2]],
+        '3>0' => [[0, 0], [1, 0], [-2, 0], [1, 2], [-2, -1]],
+        '0>3' => [[0, 0], [-1, 0], [2, 0], [-1, -2], [2, 1]],
+    ];
+
     /** @var array<string, list<list<array{int, int}>>>|null */
     private static ?array $shapes = null;
+
+    /**
+     * Offsets to try, in order, when rotating from one state to an adjacent one (kicksFor() in constants.js).
+     *
+     * @return list<array{int, int}>
+     */
+    public static function kicks(string $type, int $from, int $to): array
+    {
+        if ($type === 'O') {
+            return [[0, 0]];
+        }
+
+        return ($type === 'I' ? self::KICKS_I : self::KICKS_JLSTZ)["{$from}>{$to}"];
+    }
 
     /**
      * Cells of a piece in a rotation state (0-3, clockwise).

@@ -25,6 +25,15 @@ final class Rules
     public const GARBAGE_GRACE_MS = 3000;
 
     /**
+     * Pace limit: a player's locks may not outrun this many pieces per second of match time, plus a head start.
+     * It is measured against the whole match rather than a short window, so a backlog of locks sent after a
+     * connection drop is never mistaken for superhuman speed. Fast human play is about 3-4 pieces per second.
+     */
+    public const MAX_PIECES_PER_SECOND = 5;
+
+    public const PACE_ALLOWANCE_PIECES = 15;
+
+    /**
      * Score and attack for one lock. $combo is the counter before this lock (-1 = none).
      *
      * @return array{points: int, attack: int, combo: int, b2b: bool}

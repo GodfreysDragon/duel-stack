@@ -1,4 +1,4 @@
-// Builds the cross-language parity fixture: piece sequences plus whole bot games
+// Builds the cross-language parity fixture: piece sequences, SRS kick tables and whole bot games
 // (with holds, combos and incoming garbage) and the expected state after every
 // lock. tests/Unit/EngineParityTest.php replays it through the PHP engine.
 //
@@ -11,6 +11,7 @@ import { Randomizer } from '../../resources/js/engine/randomizer.js';
 import { applyLock, initialState } from '../../resources/js/engine/simulation.js';
 import { serialize } from '../../resources/js/engine/board.js';
 import { chooseMove } from '../../resources/js/engine/bot.js';
+import { PIECE_TYPES, kicksFor } from '../../resources/js/engine/constants.js';
 
 export const FIXTURE_PATH = fileURLToPath(new URL('../Fixtures/engine-parity.json', import.meta.url));
 
@@ -71,6 +72,12 @@ export function buildFixture() {
             return { seed, pieces: Array.from({ length: 70 }, (_, i) => randomizer.piece(i)).join('') };
         }),
         games: [1, 42, 2024, 31337].map((seed) => playGame(seed, 250)),
+        // SRS kicks for every turn between adjacent rotation states, keyed "I0>1".
+        kicks: Object.fromEntries(
+            PIECE_TYPES.flatMap((type) =>
+                [0, 1, 2, 3].flatMap((from) => [(from + 1) % 4, (from + 3) % 4].map((to) => [`${type}${from}>${to}`, kicksFor(type, from, to)])),
+            ),
+        ),
     };
 }
 

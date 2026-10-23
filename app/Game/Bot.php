@@ -69,12 +69,14 @@ final class Bot
     }
 
     /**
-     * Every distinct hard-drop placement of $type.
+     * Every distinct hard-drop placement of $type. Unlike the JS bot, placements the server would reject as
+     * unreachable (only possible with blocks in the spawn rows) are left out, so the bot never retries one.
      *
      * @return list<array{piece: string, rotation: int, x: int, y: int, held: bool, score: float}>
      */
     private static function placements(Board $board, string $type, bool $held): array
     {
+        $reachable = Reachability::positions($board, $type);
         $seen = [];
         $result = [];
         for ($rotation = 0; $rotation < 4; $rotation++) {
@@ -83,6 +85,9 @@ final class Bot
                     continue;
                 }
                 $y = $board->dropY($type, $rotation, $x, Pieces::SPAWN_Y);
+                if (! isset($reachable[Reachability::key($rotation, $x, $y)])) {
+                    continue;
+                }
                 $placed = $board->place($type, $rotation, $x, $y);
                 $key = $placed->toString();
                 if (isset($seen[$key])) {
