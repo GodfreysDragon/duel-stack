@@ -90,7 +90,7 @@ class LockProcessor
                 'last_active_at' => now(),
                 'last_seen_at' => now(),
                 'garbage_received' => $player->garbage_received + $garbage->sum('lines'),
-                'garbage_sent' => $player->garbage_sent + ($sent?->lines ?? 0),
+                'garbage_sent' => $player->garbage_sent + ($sent->lines ?? 0),
             ])->save();
 
             GarbageBatch::query()->whereKey($garbage->modelKeys())->update(['applied_at_piece' => $pieceNumber]);

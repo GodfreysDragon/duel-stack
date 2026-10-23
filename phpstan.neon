@@ -1,0 +1,13 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+
+parameters:
+    paths:
+        - app
+        - bootstrap/app.php
+        - config
+        - database
+        - routes
+    level: 6
+    # The models declare casts() as array<string, string>; read the actual array so casts are typed.
+    parseModelCastsMethod: true
