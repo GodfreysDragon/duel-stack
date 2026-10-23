@@ -19,7 +19,9 @@ MySQL 8 or SQLite
 
 ## What's in it
 
-- **Ranked 1v1** with Elo ratings (K=32), lifetime stats, a leaderboard and player profiles.
+- **Ranked 1v1** with Elo ratings (K=32), lifetime stats, player profiles with paginated match history, and a
+  leaderboard per **monthly season**. When a season ends, its standings are kept and ratings move halfway back to 1000.
+  Ratings above 1200 decay slowly after two weeks without a game.
 - **Rating-based matchmaking.** The acceptable rating gap widens the longer you wait (±150, plus 25 a second, up to
   ±1000).
 - **House bots.** A player left alone for 15 seconds is paired with the closest-rated bot: Rookie, Club or Pro. Bots

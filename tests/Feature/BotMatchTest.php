@@ -133,10 +133,11 @@ class BotMatchTest extends TestCase
 
     public function test_bots_are_left_off_the_leaderboard(): void
     {
-        User::factory()->bot()->create(['games_played' => 5, 'rating' => 2000]);
+        $bot = User::factory()->bot()->create(['games_played' => 5, 'rating' => 2000]);
         $player = User::factory()->create(['games_played' => 5, 'rating' => 1100]);
+        GameMatch::factory()->finished()->between($player, $bot)->create(['winner_id' => $bot->id]);
 
-        $this->getJson('/api/leaderboard')->assertJsonCount(1)->assertJsonPath('0.id', $player->id);
+        $this->getJson('/api/leaderboard')->assertJsonCount(1, 'players')->assertJsonPath('players.0.user.id', $player->id);
         $this->getJson("/api/players/{$player->name}")->assertJsonPath('rank', 1);
     }
 

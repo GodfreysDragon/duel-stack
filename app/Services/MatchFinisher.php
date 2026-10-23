@@ -64,6 +64,7 @@ class MatchFinisher
             $won ? 'wins' : 'losses' => DB::raw(($won ? 'wins' : 'losses').' + 1'),
             'total_lines' => DB::raw('total_lines + '.(int) $player->lines),
             'best_score' => DB::raw('CASE WHEN best_score < '.(int) $player->score.' THEN '.(int) $player->score.' ELSE best_score END'),
+            'last_played_at' => now(),
         ]);
     }
 }

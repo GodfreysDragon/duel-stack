@@ -1,21 +1,26 @@
 <script setup>
-import { onBeforeUnmount, onMounted, ref, watchEffect } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watchEffect } from 'vue';
 import { api } from '../lib/api';
 import { session } from '../lib/session';
 
 const LIVE_REFRESH_MS = 10000;
 
 const sort = ref('rating');
-const players = ref([]);
+const seasonNumber = ref(null); // null: the running season
+const board = ref(null); // { season, seasons, players }
 const loading = ref(true);
 const live = ref([]);
 let liveTimer = null;
 
 watchEffect(async () => {
     loading.value = true;
-    players.value = await api('GET', `/api/leaderboard?sort=${sort.value}`);
+    const season = seasonNumber.value ? `&season=${seasonNumber.value}` : '';
+    board.value = await api('GET', `/api/leaderboard?sort=${sort.value}${season}`);
     loading.value = false;
 });
+
+const isCurrent = computed(() => board.value?.season.ends_at === null);
+const formatDate = (iso) => new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
 
 async function refreshLive() {
     live.value = await api('GET', '/api/matches/live').catch(() => live.value);
@@ -27,7 +32,7 @@ onMounted(() => {
 });
 onBeforeUnmount(() => clearInterval(liveTimer));
 
-const winRate = (p) => (p.games_played ? Math.round((p.wins / p.games_played) * 100) : 0);
+const winRate = (row) => (row.games_played ? Math.round((row.wins / row.games_played) * 100) : 0);
 </script>
 
 <template>
@@ -49,8 +54,18 @@ const winRate = (p) => (p.games_played ? Math.round((p.wins / p.games_played) * 
             </ul>
         </section>
 
-        <div class="mb-4 flex flex-wrap items-center gap-3">
+        <div class="mb-1 flex flex-wrap items-center gap-3">
             <h1 class="text-2xl font-bold">Leaderboard</h1>
+            <select
+                v-if="board"
+                v-model="seasonNumber"
+                class="rounded-lg border border-slate-700 bg-slate-900 px-2 py-1 text-sm"
+                aria-label="Season"
+                data-testid="season-select"
+            >
+                <option :value="null">Season {{ board.seasons[0]?.number }} (current)</option>
+                <option v-for="s in board.seasons.slice(1)" :key="s.number" :value="s.number">Season {{ s.number }}</option>
+            </select>
             <div class="ml-auto flex gap-1 rounded-lg bg-slate-900 p-1 text-sm">
                 <button
                     v-for="[key, label] in [['rating', 'Rating'], ['best_score', 'Best score']]"
@@ -64,6 +79,13 @@ const winRate = (p) => (p.games_played ? Math.round((p.wins / p.games_played) * 
                 </button>
             </div>
         </div>
+        <p v-if="board" class="mb-4 text-xs text-slate-500">
+            <template v-if="isCurrent">
+                Running since {{ formatDate(board.season.starts_at) }}. Each season lasts a calendar month; at the end, ratings move halfway back
+                to 1000. Ratings above 1200 slowly decay after two weeks without a game.
+            </template>
+            <template v-else>Final standings, {{ formatDate(board.season.starts_at) }} – {{ formatDate(board.season.ends_at) }}.</template>
+        </p>
         <div class="overflow-x-auto rounded-2xl border border-slate-800">
             <table class="w-full min-w-[520px] text-sm" data-testid="leaderboard">
                 <thead class="bg-slate-900 text-left text-xs text-slate-400 uppercase">
@@ -78,22 +100,24 @@ const winRate = (p) => (p.games_played ? Math.round((p.wins / p.games_played) * 
                 </thead>
                 <tbody>
                     <tr
-                        v-for="(p, i) in players"
-                        :key="p.id"
+                        v-for="(row, i) in board?.players ?? []"
+                        :key="row.user.id"
                         class="border-t border-slate-800"
-                        :class="p.id === session.user?.id ? 'bg-cyan-500/10' : ''"
+                        :class="row.user.id === session.user?.id ? 'bg-cyan-500/10' : ''"
                     >
                         <td class="px-4 py-2.5 font-mono text-slate-500">{{ i + 1 }}</td>
                         <td class="px-4 py-2.5">
-                            <RouterLink :to="`/players/${p.name}`" class="font-medium hover:text-cyan-300">{{ p.name }}</RouterLink>
+                            <RouterLink :to="`/players/${row.user.name}`" class="font-medium hover:text-cyan-300">{{ row.user.name }}</RouterLink>
                         </td>
-                        <td class="px-4 py-2.5 text-right font-mono">{{ p.rating }}</td>
-                        <td class="px-4 py-2.5 text-right font-mono text-slate-300">{{ p.wins }}–{{ p.losses }}</td>
-                        <td class="px-4 py-2.5 text-right font-mono text-slate-300">{{ winRate(p) }}%</td>
-                        <td class="px-4 py-2.5 text-right font-mono">{{ p.best_score.toLocaleString() }}</td>
+                        <td class="px-4 py-2.5 text-right font-mono">{{ row.rating }}</td>
+                        <td class="px-4 py-2.5 text-right font-mono text-slate-300">{{ row.wins }}–{{ row.games_played - row.wins }}</td>
+                        <td class="px-4 py-2.5 text-right font-mono text-slate-300">{{ winRate(row) }}%</td>
+                        <td class="px-4 py-2.5 text-right font-mono">{{ row.best_score.toLocaleString() }}</td>
                     </tr>
-                    <tr v-if="!loading && players.length === 0">
-                        <td colspan="6" class="px-4 py-8 text-center text-slate-500">No ranked games yet. Be the first!</td>
+                    <tr v-if="!loading && board?.players.length === 0">
+                        <td colspan="6" class="px-4 py-8 text-center text-slate-500">
+                            {{ isCurrent ? 'No ranked games this season yet. Be the first!' : 'Nobody played this season.' }}
+                        </td>
                     </tr>
                 </tbody>
             </table>

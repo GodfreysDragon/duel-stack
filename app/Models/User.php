@@ -42,6 +42,7 @@ class User extends Authenticatable
         return [
             'password' => 'hashed',
             'rating' => 'integer',
+            'last_played_at' => 'immutable_datetime',
         ];
     }
 
@@ -51,6 +52,14 @@ class User extends Authenticatable
     public function matchPlayers(): HasMany
     {
         return $this->hasMany(MatchPlayer::class);
+    }
+
+    /**
+     * @return HasMany<GameMatch, $this>
+     */
+    public function wonMatches(): HasMany
+    {
+        return $this->hasMany(GameMatch::class, 'winner_id');
     }
 
     /**
