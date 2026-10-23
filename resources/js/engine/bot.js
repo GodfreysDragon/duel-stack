@@ -5,11 +5,21 @@ import { afterHold } from './simulation.js';
 // Weights from Yiyuan Lee's "Tetris AI – The (Near) Perfect Bot" (El-Tetris style features).
 const WEIGHTS = { height: -0.510066, lines: 0.760666, holes: -0.35663, bumpiness: -0.184483 };
 
+// Average speed and error rate, matching Bot::LEVELS on the server.
 export const DIFFICULTIES = {
-    easy: { piecesPerSecond: 0.9, mistakeRate: 0.25 },
-    medium: { piecesPerSecond: 1.6, mistakeRate: 0.08 },
-    hard: { piecesPerSecond: 2.6, mistakeRate: 0 },
+    easy: { piecesPerSecond: 0.6, mistakeRate: 0.4 },
+    medium: { piecesPerSecond: 0.9, mistakeRate: 0.25 },
+    hard: { piecesPerSecond: 1.6, mistakeRate: 0.08 },
 };
+
+/**
+ * How long the bot takes over a piece, like a person: half to 1.3 times its average, now and then with a
+ * long pause on top (as Bot::thinkMilliseconds does on the server).
+ */
+export function thinkMs({ piecesPerSecond }, random = Math.random) {
+    const factor = 0.5 + 0.8 * random() + (random() < 0.1 ? 1 : 0);
+    return Math.round((factor * 1000) / piecesPerSecond);
+}
 
 function columnHeights(board) {
     const heights = [];

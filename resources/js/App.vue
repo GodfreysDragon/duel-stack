@@ -20,7 +20,7 @@ async function signOut() {
                         <span class="size-2 rounded-[2px] bg-cyan-400"></span><span class="size-2 rounded-[2px] bg-purple-500"></span>
                         <span class="size-2 rounded-[2px] bg-orange-500"></span><span class="size-2 rounded-[2px] bg-green-500"></span>
                     </span>
-                    Stack Duel
+                    Duel Stack
                 </RouterLink>
                 <div class="flex items-center gap-4 text-sm text-slate-400">
                     <RouterLink to="/leaderboard" class="hover:text-white" active-class="text-white">Leaderboard</RouterLink>

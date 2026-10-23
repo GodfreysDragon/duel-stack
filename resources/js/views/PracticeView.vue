@@ -23,7 +23,7 @@ useKeyboard(() => game.value);
             <div class="ml-auto flex items-center gap-2">
                 <select v-model="difficulty" class="rounded-lg border border-slate-700 bg-slate-900 px-3 py-1.5 text-sm" :disabled="status === 'playing' || status === 'countdown'">
                     <option v-for="(settings, name) in DIFFICULTIES" :key="name" :value="name">
-                        {{ name[0].toUpperCase() + name.slice(1) }} · {{ settings.piecesPerSecond }} pieces/s
+                        {{ name[0].toUpperCase() + name.slice(1) }} · ~{{ settings.piecesPerSecond }} pieces/s
                     </option>
                 </select>
                 <button

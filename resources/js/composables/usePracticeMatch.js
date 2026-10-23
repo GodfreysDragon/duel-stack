@@ -1,6 +1,6 @@
 import { onBeforeUnmount, reactive, ref, shallowRef } from 'vue';
 import { Game } from '../engine/game.js';
-import { DIFFICULTIES, chooseMove } from '../engine/bot.js';
+import { DIFFICULTIES, chooseMove, thinkMs } from '../engine/bot.js';
 import { settings } from '../lib/settings';
 import { sfx } from '../lib/sound';
 
@@ -18,12 +18,12 @@ export function usePracticeMatch() {
     const timers = [];
     let garbageId = 0;
 
-    const clearTimers = () => timers.splice(0).forEach((t) => clearInterval(t));
+    const clearTimers = () => timers.splice(0).forEach((t) => clearTimeout(t));
 
     function start(difficulty = 'medium') {
         clearTimers();
         const seed = Math.floor(Math.random() * 4294967296);
-        const settings = DIFFICULTIES[difficulty];
+        const level = DIFFICULTIES[difficulty];
 
         const send = (target, attack) => {
             if (attack <= 0) return;
@@ -75,16 +75,17 @@ export function usePracticeMatch() {
             status.value = 'playing';
             you.start();
             opponent.start();
-            timers.push(
-                setInterval(() => {
-                    if (!opponent.running) return;
-                    const move = chooseMove(opponent.state, opponent.randomizer, {
-                        canHold: !opponent.heldThisTurn,
-                        mistakeRate: settings.mistakeRate,
-                    });
-                    if (move) opponent.placeDirect(move);
-                }, 1000 / settings.piecesPerSecond),
-            );
+            // Each piece gets its own think time, as a person's would.
+            const playNext = () => {
+                if (!opponent.running) return;
+                const move = chooseMove(opponent.state, opponent.randomizer, {
+                    canHold: !opponent.heldThisTurn,
+                    mistakeRate: level.mistakeRate,
+                });
+                if (move) opponent.placeDirect(move);
+                timers.push(setTimeout(playNext, thinkMs(level)));
+            };
+            timers.push(setTimeout(playNext, thinkMs(level)));
         }, 1000);
         timers.push(countdownTimer);
     }

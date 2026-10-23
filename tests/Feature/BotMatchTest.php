@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Events\MatchFound;
+use App\Game\Bot;
 use App\Game\Randomizer;
 use App\Models\GameMatch;
 use App\Models\MatchPlayer;
@@ -71,9 +72,14 @@ class BotMatchTest extends TestCase
 
         $this->artisan('bots:play', ['--seconds' => 10])->assertSuccessful();
 
-        // 1.6 pieces a second, without a burst to catch up on the time before the driver started.
+        // The first piece at once, then one per think time, without a burst to catch up on the time before the
+        // driver started.
+        $expected = 1;
+        for ($elapsed = 0; ($elapsed += Bot::thinkMilliseconds('medium', $match->seed, $expected)) <= 10_000;) {
+            $expected++;
+        }
         $bot->refresh();
-        $this->assertEqualsWithDelta(16, $bot->pieces, 1);
+        $this->assertEqualsWithDelta($expected, $bot->pieces, 1);
         $this->assertFalse($bot->topped_out);
         $this->assertSame($bot->pieces, $bot->moves()->count());
         $this->assertFalse($match->fresh()->isFinished());
@@ -84,7 +90,7 @@ class BotMatchTest extends TestCase
         [, $broken] = $this->botMatch('medium');
         [, $healthy] = $this->botMatch('hard');
         $broken->update(['board' => 'not a board']);
-        $this->travel(1)->seconds();
+        $this->travel(3)->seconds();
 
         $this->assertSame(1, app(BotDriver::class)->tick());
 

@@ -5,7 +5,7 @@ import { Randomizer } from '../../resources/js/engine/randomizer.js';
 import { applyLock, cancelGarbage, initialState, InvalidLock, mergePendingGarbage } from '../../resources/js/engine/simulation.js';
 import { addGarbage, deserialize, emptyBoard, scoreLock, serialize } from '../../resources/js/engine/board.js';
 import { Game } from '../../resources/js/engine/game.js';
-import { chooseMove } from '../../resources/js/engine/bot.js';
+import { DIFFICULTIES, chooseMove, thinkMs } from '../../resources/js/engine/bot.js';
 import { pieceAlongLock } from '../../resources/js/engine/playback.js';
 import { PIECE_TYPES } from '../../resources/js/engine/constants.js';
 import { buildFixture, FIXTURE_PATH } from './parity-fixture.mjs';
@@ -130,6 +130,14 @@ test('the hard bot survives 300 pieces on a clean board', () => {
         assert.equal(state.toppedOut, false, `topped out at piece ${i}`);
     }
     assert.ok(state.lines > 100);
+});
+
+test('bot think times vary from half to over twice the average, which they keep to', () => {
+    const average = 1000 / DIFFICULTIES.medium.piecesPerSecond;
+    const times = Array.from({ length: 2000 }, () => thinkMs(DIFFICULTIES.medium));
+    assert.ok(Math.min(...times) >= 0.5 * average && Math.max(...times) <= 2.3 * average);
+    assert.ok(Math.max(...times) > 1.3 * average, 'the odd long pause');
+    assert.ok(Math.abs(times.reduce((a, b) => a + b, 0) / times.length - average) < 0.05 * average);
 });
 
 test('a played-back bot lock spawns, turns and shifts at the top, then falls to where it locked', () => {

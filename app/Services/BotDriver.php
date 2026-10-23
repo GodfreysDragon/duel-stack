@@ -11,8 +11,8 @@ use App\Models\MatchPlayer;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Plays the bots' side of every live bot match. Stateless: a bot's next piece is due one
- * interval (set by its level's speed) after its last lock, so any number of ticks, or a
+ * Plays the bots' side of every live bot match. Stateless: a bot's next piece is due its think
+ * time (see Bot::thinkMilliseconds) after its last lock, so any number of ticks, or a
  * restarted driver, plays at the same pace.
  *
  * Bot locks go through LockProcessor, so bots follow exactly the rules players do.
@@ -40,10 +40,10 @@ class BotDriver
     private function play(MatchPlayer $bot): bool
     {
         $match = $bot->gameMatch;
-        $level = Bot::LEVELS[$bot->user->bot_level];
+        $level = $bot->user->bot_level;
 
         $lastLock = $bot->last_active_at ?? $match->starts_at;
-        if ($lastLock->diffInMilliseconds(now()) < 1000 / $level['pieces_per_second']) {
+        if ($lastLock->diffInMilliseconds(now()) < Bot::thinkMilliseconds($level, $match->seed, $bot->pieces)) {
             return false;
         }
 
@@ -53,7 +53,7 @@ class BotDriver
 
         $state = $bot->toState();
         $randomizer = new Randomizer($match->seed);
-        $move = Bot::chooseMove($state, $randomizer, $level['mistake_rate']);
+        $move = Bot::chooseMove($state, $randomizer, Bot::LEVELS[$level]['mistake_rate']);
         if ($move === null) {
             return false;
         }

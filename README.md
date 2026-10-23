@@ -1,4 +1,4 @@
-# Stack Duel
+# Duel Stack
 
 [![CI](https://github.com/GodfreysDragon/stack-duel/actions/workflows/ci.yml/badge.svg)](https://github.com/GodfreysDragon/stack-duel/actions/workflows/ci.yml)
 
@@ -25,7 +25,8 @@ MySQL 8 or SQLite
 - **Rating-based matchmaking.** The acceptable rating gap widens the longer you wait (±150, plus 25 a second, up to
   ±1000).
 - **House bots.** A player left alone for 15 seconds is paired with the closest-rated bot: Rookie, Club or Pro. Bots
-  play on the server under exactly the same rules as players.
+  play on the server under exactly the same rules as players, at a human pace: each piece takes a varying think time,
+  with the odd long pause.
 - **A full modern ruleset:** SRS rotation with wall kicks, hold, a 5-piece preview, a ghost piece, DAS/ARR and lock
   delay. Attacks come from combos, back-to-back tetrises and perfect clears, and cancel incoming garbage first.
 - **Exact replays** of every finished match, with scrubbing, 0.5–4x speed and a board swap.
@@ -73,8 +74,8 @@ period.
 
 **Bots.** `php artisan bots:play` is a single daemon that plays every bot match. It ports the JS bot's placement
 search to PHP: height, holes, bumpiness and lines, over every drop of the current piece and the hold swap. It
-submits each lock through the same `LockProcessor` that players use. The daemon is stateless: a bot's next piece is due
-one interval after its last lock, so a restarted daemon picks up at the same pace.
+submits each lock through the same `LockProcessor` that players use. The daemon is stateless: a bot's think time for
+each piece comes from a hash of the match seed and the piece number, so a restarted daemon picks up at the same pace.
 
 **Leaving a match.** A running game sends a heartbeat every 5 seconds from its render loop, which stops when the tab is
 hidden. If a player has had no heartbeat and no lock for 20 seconds, or no lock for 5 minutes, the opponent can claim

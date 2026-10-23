@@ -12,15 +12,32 @@ final class Bot
     private const WEIGHTS = ['height' => -0.510066, 'lines' => 0.760666, 'holes' => -0.35663, 'bumpiness' => -0.184483];
 
     /**
-     * Speed and error rate per level, matching DIFFICULTIES in bot.js.
+     * Average speed and error rate per level, matching DIFFICULTIES in bot.js. Medium plays at a casual
+     * human's pace; hard at a practised one's.
      *
      * @var array<string, array{pieces_per_second: float, mistake_rate: float}>
      */
     public const LEVELS = [
-        'easy' => ['pieces_per_second' => 0.9, 'mistake_rate' => 0.25],
-        'medium' => ['pieces_per_second' => 1.6, 'mistake_rate' => 0.08],
-        'hard' => ['pieces_per_second' => 2.6, 'mistake_rate' => 0.0],
+        'easy' => ['pieces_per_second' => 0.6, 'mistake_rate' => 0.4],
+        'medium' => ['pieces_per_second' => 0.9, 'mistake_rate' => 0.25],
+        'hard' => ['pieces_per_second' => 1.6, 'mistake_rate' => 0.08],
     ];
+
+    /** Chance that a piece gets a long hesitation, and how many average pieces' time it adds. */
+    private const HESITATION = ['chance' => 0.1, 'length' => 1.0];
+
+    /**
+     * How long the bot takes over a piece, like a person: anywhere from half to 1.3 times its average,
+     * now and then with a long pause on top, averaging out at its level's pace. The same match and piece
+     * always give the same time, so a stateless driver can tell when the piece is due.
+     */
+    public static function thinkMilliseconds(string $level, int $seed, int $pieceNumber): int
+    {
+        $roll = fn (int $salt): float => (crc32("{$seed}:{$pieceNumber}:{$salt}") % 1_000_000) / 1_000_000;
+        $factor = 0.5 + 0.8 * $roll(0) + ($roll(1) < self::HESITATION['chance'] ? self::HESITATION['length'] : 0.0);
+
+        return (int) round($factor * 1000 / self::LEVELS[$level]['pieces_per_second']);
+    }
 
     /**
      * A lock for the current turn, or null if nothing fits.

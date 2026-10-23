@@ -1,7 +1,7 @@
 import { pieceAlongLock } from '../engine/playback.js';
 
 // Each lock is played back over most of the gap since the previous one, within these bounds.
-const PLAYBACK = { firstMs: 500, minMs: 200, maxMs: 900, share: 0.9, maxBacklog: 3 };
+const PLAYBACK = { firstMs: 500, minMs: 200, maxMs: 2500, share: 0.9, maxBacklog: 3 };
 
 /**
  * Plays a player's locks back as a falling piece, for boards that get no live falling-piece whispers: a house

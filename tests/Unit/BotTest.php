@@ -64,4 +64,16 @@ class BotTest extends TestCase
 
         $this->assertNotEquals($best, $mistake);
     }
+
+    public function test_think_times_vary_like_a_persons_but_keep_the_levels_pace(): void
+    {
+        $average = 1000 / Bot::LEVELS['medium']['pieces_per_second'];
+        $times = array_map(fn (int $piece) => Bot::thinkMilliseconds('medium', 42, $piece), range(0, 1999));
+
+        $this->assertSame($times[7], Bot::thinkMilliseconds('medium', 42, 7), 'the same piece always takes the same time');
+        $this->assertGreaterThanOrEqual(0.5 * $average, min($times));
+        $this->assertLessThanOrEqual(2.3 * $average, max($times));
+        $this->assertGreaterThan(1.3 * $average, max($times), 'the odd long pause');
+        $this->assertEqualsWithDelta($average, array_sum($times) / count($times), 0.05 * $average);
+    }
 }
