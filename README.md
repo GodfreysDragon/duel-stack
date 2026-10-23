@@ -1,6 +1,6 @@
 # Duel Stack
 
-[![CI](https://github.com/GodfreysDragon/stack-duel/actions/workflows/ci.yml/badge.svg)](https://github.com/GodfreysDragon/stack-duel/actions/workflows/ci.yml)
+[![CI](https://github.com/GodfreysDragon/duel-stack/actions/workflows/ci.yml/badge.svg)](https://github.com/GodfreysDragon/duel-stack/actions/workflows/ci.yml)
 
 A real-time 1v1 block-stacking battle in the browser. Two players are matched by rating and dealt the same seeded
 pieces. Every line you clear sends garbage rows into your opponent's board, and the first player to top out loses.
@@ -132,8 +132,8 @@ certificate. No queue worker is needed, because every broadcast is sent immediat
 
 ```sh
 sudo apt-get update && sudo apt-get install -y git                                 # minimal images lack it
-git clone https://github.com/GodfreysDragon/stack-duel.git /tmp/stack-duel
-sudo bash /tmp/stack-duel/deploy/setup.sh stack-duel.example.com you@example.com   # once
+git clone https://github.com/GodfreysDragon/duel-stack.git /tmp/duel-stack
+sudo bash /tmp/duel-stack/deploy/setup.sh duel-stack.example.com you@example.com   # once
 bash /var/www/stack-duel/deploy/update.sh                                          # each deploy
 ```
 

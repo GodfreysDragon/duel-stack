@@ -1,6 +1,6 @@
 {
     "$schema": "https://getcomposer.org/schema.json",
-    "name": "godfreysdragon/stack-duel",
+    "name": "godfreysdragon/duel-stack",
     "type": "project",
     "description": "Real-time 1v1 block-stacking battle: Laravel 13, Reverb WebSockets, Vue 3, PixiJS, a server-validated game engine and house bots.",
     "keywords": [

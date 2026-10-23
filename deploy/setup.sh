@@ -5,8 +5,8 @@
 #
 # Usage, on the server:
 #   sudo apt-get update && sudo apt-get install -y git
-#   git clone https://github.com/GodfreysDragon/stack-duel.git /tmp/stack-duel
-#   sudo bash /tmp/stack-duel/deploy/setup.sh <domain> <email for Let's Encrypt>
+#   git clone https://github.com/GodfreysDragon/duel-stack.git /tmp/duel-stack
+#   sudo bash /tmp/duel-stack/deploy/setup.sh <domain> <email for Let's Encrypt>
 #
 # Running it again is safe: it keeps an existing checkout and .env.
 
@@ -21,7 +21,7 @@ DOMAIN=$1
 EMAIL=$2
 APP_DIR=/var/www/stack-duel
 APP_USER=${SUDO_USER:-ubuntu}
-REPO=https://github.com/GodfreysDragon/stack-duel.git
+REPO=https://github.com/GodfreysDragon/duel-stack.git
 DEPLOY_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 as_app() {
