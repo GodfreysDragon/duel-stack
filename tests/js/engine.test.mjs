@@ -6,6 +6,7 @@ import { applyLock, initialState, InvalidLock } from '../../resources/js/engine/
 import { addGarbage, deserialize, emptyBoard, scoreLock, serialize } from '../../resources/js/engine/board.js';
 import { Game } from '../../resources/js/engine/game.js';
 import { chooseMove } from '../../resources/js/engine/bot.js';
+import { pieceAlongLock } from '../../resources/js/engine/playback.js';
 import { PIECE_TYPES } from '../../resources/js/engine/constants.js';
 import { buildFixture, FIXTURE_PATH } from './parity-fixture.mjs';
 
@@ -129,4 +130,19 @@ test('the hard bot survives 300 pieces on a clean board', () => {
         assert.equal(state.toppedOut, false, `topped out at piece ${i}`);
     }
     assert.ok(state.lines > 100);
+});
+
+test('a played-back bot lock spawns, turns and shifts at the top, then falls to where it locked', () => {
+    const board = emptyBoard();
+    const lock = { piece: 'T', rotation: 3, x: 6, y: 19 };
+    const path = Array.from({ length: 101 }, (_, i) => pieceAlongLock(board, lock, i / 100));
+
+    assert.deepEqual(path[0], { type: 'T', rotation: 0, x: 3, y: 1 });
+    assert.deepEqual(path[100], { type: 'T', rotation: 3, x: 6, y: 19 });
+    // One step at a time: never more than one column, one turn or one row between frames, and never back up.
+    for (let i = 1; i < path.length; i++) {
+        const [a, b] = [path[i - 1], path[i]];
+        assert.ok(Math.abs(b.x - a.x) <= 1 && b.y >= a.y, `jump between ${JSON.stringify(a)} and ${JSON.stringify(b)}`);
+    }
+    assert.equal(new Set(path.map((p) => p.rotation)).size, 2, 'turns once, the short way round');
 });

@@ -115,7 +115,12 @@ class LockProcessor
 
         ['player' => $player, 'sent' => $sent, 'result' => $result] = $outcome;
 
-        broadcast(new BoardUpdated($player))->toOthers();
+        broadcast(new BoardUpdated($player, [
+            'piece' => $input['piece'],
+            'rotation' => $input['rotation'],
+            'x' => $input['x'],
+            'y' => $input['y'],
+        ]))->toOthers();
         if ($sent !== null) {
             broadcast(new GarbageSent($match, $sent, $player->user_id))->toOthers();
         }

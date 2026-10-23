@@ -83,7 +83,8 @@ class LockSubmissionTest extends TestCase
 
         $this->assertDatabaseHas('match_moves', ['match_player_id' => $this->player($this->alice)->id, 'piece_number' => 0, 'piece' => 'I', 'x' => 3, 'y' => 20]);
         Event::assertDispatched(BoardUpdated::class, fn (BoardUpdated $event) => $event->player->user_id === $this->alice->id
-            && $event->broadcastWith()['board'] === str_repeat('.', 210).'...IIII...');
+            && $event->broadcastWith()['board'] === str_repeat('.', 210).'...IIII...'
+            && $event->broadcastWith()['lock'] === ['piece' => 'I', 'rotation' => 0, 'x' => 3, 'y' => 20]);
     }
 
     public function test_an_illegal_lock_is_rejected_with_the_state_to_resync_from(): void

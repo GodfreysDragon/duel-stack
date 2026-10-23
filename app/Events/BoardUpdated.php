@@ -12,12 +12,16 @@ use Illuminate\Foundation\Events\Dispatchable;
 
 /**
  * A player's board after a lock the server accepted, for the opponent's view.
+ * Bots send no falling-piece whispers, so the opponent's client animates the lock instead.
  */
 class BoardUpdated implements ShouldBroadcastNow, ShouldRescue
 {
     use Dispatchable, InteractsWithSockets;
 
-    public function __construct(public MatchPlayer $player) {}
+    /**
+     * @param  array{piece: string, rotation: int, x: int, y: int}|null  $lock
+     */
+    public function __construct(public MatchPlayer $player, public ?array $lock = null) {}
 
     /**
      * @return array<int, Channel>
@@ -45,6 +49,7 @@ class BoardUpdated implements ShouldBroadcastNow, ShouldRescue
             'pieces' => $this->player->pieces,
             'garbage_sent' => $this->player->garbage_sent,
             'topped_out' => $this->player->topped_out,
+            'lock' => $this->lock,
         ];
     }
 }

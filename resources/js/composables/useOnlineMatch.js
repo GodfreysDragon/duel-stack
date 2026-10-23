@@ -5,6 +5,7 @@ import { session } from '../lib/session';
 import { Game } from '../engine/game.js';
 import { deserialize, emptyBoard, serialize } from '../engine/board.js';
 import { chooseMove } from '../engine/bot.js';
+import { pieceAlongLock } from '../engine/playback.js';
 import { sfx } from '../lib/sound';
 
 const ABANDON_AFTER_MS = 20000;
@@ -12,6 +13,8 @@ const WHISPER_INTERVAL_MS = 80;
 // Sent from the render loop, which only runs while the tab is visible, so heartbeats stop when the player leaves.
 const HEARTBEAT_INTERVAL_MS = 5000;
 const RESULT_FALLBACK_MS = 3000;
+// A bot's lock is played back as a falling piece over most of the gap since its previous lock.
+const BOT_PLAYBACK = { firstMs: 500, minMs: 200, maxMs: 900, share: 0.9, maxBacklog: 3 };
 
 const toEngineState = (state) => ({ ...state, board: deserialize(state.board) });
 
@@ -22,7 +25,8 @@ const toEngineState = (state) => ({ ...state, board: deserialize(state.board) })
  * is POSTed in order. The server answers with its own state: if it disagrees,
  * or rejects a lock (409), the game resyncs to the server's state.
  * Opponent boards and garbage arrive over the match's presence channel, and the
- * opponent's falling piece arrives as a client whisper.
+ * opponent's falling piece arrives as a client whisper. House bots don't whisper, so their
+ * locks are played back as a falling piece, a fraction of a second behind the server.
  */
 export function useOnlineMatch(matchId, { autopilot = false } = {}) {
     const status = ref('loading'); // loading | countdown | playing | waiting | finished | error
@@ -54,6 +58,8 @@ export function useOnlineMatch(matchId, { autopilot = false } = {}) {
     let lastWhisper = 0;
     let lastWhispered = '';
     let lastHeartbeat = 0;
+    let botLocks = [];
+    let lastBotLockAt = 0;
     const timers = [];
 
     const url = `/api/matches/${matchId}`;
@@ -131,15 +137,8 @@ export function useOnlineMatch(matchId, { autopilot = false } = {}) {
             })
             .listen('.board.updated', (e) => {
                 if (e.user_id !== opponentId) return;
-                Object.assign(opp, {
-                    board: deserialize(e.board),
-                    score: e.score,
-                    lines: e.lines,
-                    sent: e.garbage_sent,
-                    toppedOut: e.topped_out,
-                    active: null,
-                    lastHeardAt: Date.now(),
-                });
+                if (isBot && e.lock) queueBotLock(e);
+                else showOpponentBoard(e);
             })
             .listen('.garbage.sent', (e) => {
                 if (e.from_user_id !== session.user.id) {
@@ -152,6 +151,50 @@ export function useOnlineMatch(matchId, { autopilot = false } = {}) {
                 opp.active = piece;
                 opp.lastHeardAt = Date.now();
             });
+    }
+
+    function showOpponentBoard(e) {
+        Object.assign(opp, {
+            board: deserialize(e.board),
+            score: e.score,
+            lines: e.lines,
+            sent: e.garbage_sent,
+            toppedOut: e.topped_out,
+            active: null,
+            lastHeardAt: Date.now(),
+        });
+    }
+
+    // ---- bot playback ------------------------------------------------------------
+
+    function queueBotLock(e) {
+        const now = performance.now();
+        const gap = lastBotLockAt ? now - lastBotLockAt : BOT_PLAYBACK.firstMs / BOT_PLAYBACK.share;
+        lastBotLockAt = now;
+        const durationMs = Math.min(Math.max(gap * BOT_PLAYBACK.share, BOT_PLAYBACK.minMs), BOT_PLAYBACK.maxMs);
+        botLocks.push({ event: e, durationMs, startedAt: null });
+    }
+
+    function playBotLocks() {
+        // After the tab was hidden, skip ahead instead of replaying every missed piece.
+        while (botLocks.length > BOT_PLAYBACK.maxBacklog) showOpponentBoard(botLocks.shift().event);
+
+        const now = performance.now();
+        while (botLocks.length) {
+            const item = botLocks[0];
+            item.startedAt ??= now;
+            const progress = (now - item.startedAt) / item.durationMs;
+            if (progress < 1) {
+                opp.active = pieceAlongLock(opp.board, item.event.lock, progress);
+                return;
+            }
+            botLocks.shift();
+            showOpponentBoard(item.event);
+        }
+    }
+
+    function flushBotLocks() {
+        botLocks.splice(0).forEach((item) => showOpponentBoard(item.event));
     }
 
     // ---- locks ----------------------------------------------------------------
@@ -238,6 +281,7 @@ export function useOnlineMatch(matchId, { autopilot = false } = {}) {
         const wasLive = status.value !== 'loading' && status.value !== 'finished';
         if (wasLive) finalMatch.winner_id === session.user?.id ? sfx.win() : sfx.lose();
         game.value?.stop();
+        flushBotLocks();
         match.value = finalMatch;
         result.value = finalMatch;
         status.value = 'finished';
@@ -281,6 +325,7 @@ export function useOnlineMatch(matchId, { autopilot = false } = {}) {
         const g = game.value;
         if (!g) return { me: { board: emptyBoard() }, opponent: opp };
         g.update(dt);
+        playBotLocks();
 
         if (g.running && performance.now() - lastHeartbeat > HEARTBEAT_INTERVAL_MS) {
             lastHeartbeat = performance.now();
