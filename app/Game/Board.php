@@ -68,12 +68,18 @@ final class Board
 
     public function place(string $type, int $rotation, int $x, int $y): self
     {
-        $rows = $this->rows;
+        $columnsByRow = [];
         foreach (Pieces::cells($type, $rotation) as [$cx, $cy]) {
-            $rows[$y + $cy][$x + $cx] = $type;
+            $columnsByRow[$y + $cy][] = $x + $cx;
         }
 
-        return new self($rows);
+        return new self(array_map(function (string $row, int $rowY) use ($columnsByRow, $type) {
+            foreach ($columnsByRow[$rowY] ?? [] as $column) {
+                $row = substr_replace($row, $type, $column, 1);
+            }
+
+            return $row;
+        }, $this->rows, array_keys($this->rows)));
     }
 
     /**

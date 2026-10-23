@@ -56,15 +56,13 @@ class MatchFinisher
         $player->update(['rating_after' => $newRating]);
 
         $delta = $newRating - $player->rating_before;
-        $adjusted = 'rating '.($delta < 0 ? '- '.abs($delta) : '+ '.$delta);
+        $tally = $won ? 'wins = wins + 1' : 'losses = losses + 1';
 
-        User::query()->whereKey($player->user_id)->update([
-            'rating' => DB::raw("CASE WHEN {$adjusted} < ".Elo::FLOOR.' THEN '.Elo::FLOOR." ELSE {$adjusted} END"),
-            'games_played' => DB::raw('games_played + 1'),
-            $won ? 'wins' : 'losses' => DB::raw(($won ? 'wins' : 'losses').' + 1'),
-            'total_lines' => DB::raw('total_lines + '.(int) $player->lines),
-            'best_score' => DB::raw('CASE WHEN best_score < '.(int) $player->score.' THEN '.(int) $player->score.' ELSE best_score END'),
-            'last_played_at' => now(),
-        ]);
+        DB::update(
+            'UPDATE users SET rating = CASE WHEN rating + ? < ? THEN ? ELSE rating + ? END, games_played = games_played + 1, '
+            .$tally.', total_lines = total_lines + ?, best_score = CASE WHEN best_score < ? THEN ? ELSE best_score END,'
+            .' last_played_at = ?, updated_at = ? WHERE id = ?',
+            [$delta, Elo::FLOOR, Elo::FLOOR, $delta, $player->lines, $player->score, $player->score, now(), now(), $player->user_id],
+        );
     }
 }

@@ -7,8 +7,10 @@ use App\Game\Bot;
 use App\Game\Randomizer;
 use App\Game\Simulation;
 use App\Models\GameMatch;
+use App\Models\GarbageBatch;
 use App\Models\MatchPlayer;
 use Illuminate\Support\Facades\DB;
+use LogicException;
 
 /**
  * Plays the bots' side of every live bot match. Stateless: a bot's next piece is due its think
@@ -40,7 +42,7 @@ class BotDriver
     private function play(MatchPlayer $bot): bool
     {
         $match = $bot->gameMatch;
-        $level = $bot->user->bot_level;
+        $level = $bot->user->bot_level ?? throw new LogicException("Player {$bot->id} is not a bot.");
 
         $lastLock = $bot->last_active_at ?? $match->starts_at;
         if ($lastLock->diffInMilliseconds(now()) < Bot::thinkMilliseconds($level, $match->seed, $bot->pieces)) {
@@ -53,7 +55,7 @@ class BotDriver
 
         $state = $bot->toState();
         $randomizer = new Randomizer($match->seed);
-        $move = Bot::chooseMove($state, $randomizer, Bot::LEVELS[$level]['mistake_rate']);
+        $move = Bot::chooseMove($state, $randomizer, Bot::level($level)['mistake_rate']);
         if ($move === null) {
             return false;
         }
@@ -61,7 +63,7 @@ class BotDriver
         // Like the client: garbage rises on a lock that clears nothing.
         $pending = $bot->incomingGarbage()->pending()->get();
         $clears = Simulation::applyLock($state, $randomizer, [...$move, 'garbage' => []])['cleared'] !== [];
-        $garbageIds = $clears ? [] : $pending->modelKeys();
+        $garbageIds = $clears ? [] : array_values($pending->map(fn (GarbageBatch $batch) => $batch->id)->all());
 
         try {
             $this->processor->submit($match, $bot->user, [...$move, 'piece_number' => $bot->pieces, 'garbage_ids' => $garbageIds]);

@@ -26,8 +26,8 @@ class MatchPlayerFactory extends Factory
             'user_id' => User::factory(),
             'slot' => 0,
             'board' => Board::empty()->toString(),
-            'current' => fn (array $attributes) => (new Randomizer(GameMatch::findOrFail($attributes['game_match_id'])->seed))->piece(0),
-            'rating_before' => fn (array $attributes) => User::findOrFail($attributes['user_id'])->rating,
+            'current' => fn (array $attributes) => (new Randomizer(GameMatch::query()->whereKey($attributes['game_match_id'])->firstOrFail()->seed))->piece(0),
+            'rating_before' => fn (array $attributes) => User::query()->whereKey($attributes['user_id'])->firstOrFail()->rating,
         ];
     }
 }

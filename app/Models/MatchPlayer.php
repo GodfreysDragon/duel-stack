@@ -78,7 +78,7 @@ class MatchPlayer extends Model
      */
     public function pendingGarbageForClient(): array
     {
-        return $this->incomingGarbage()->pending()->get()->map->toClientArray()->all();
+        return array_values($this->incomingGarbage()->pending()->get()->map->toClientArray()->all());
     }
 
     /**

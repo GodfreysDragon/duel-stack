@@ -2,6 +2,8 @@
 
 namespace App\Game;
 
+use InvalidArgumentException;
+
 /**
  * Scoring and attack tables, mirroring resources/js/engine/constants.js and scoreLock() in board.js.
  */
@@ -40,6 +42,9 @@ final class Rules
      */
     public static function scoreLock(int $lines, int $combo, bool $b2b, bool $perfectClear): array
     {
+        if ($lines < 0 || $lines > 4) {
+            throw new InvalidArgumentException("A lock clears 0 to 4 lines, not {$lines}.");
+        }
         if ($lines === 0) {
             return ['points' => 0, 'attack' => 0, 'combo' => -1, 'b2b' => $b2b];
         }

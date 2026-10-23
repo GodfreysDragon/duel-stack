@@ -58,7 +58,7 @@ class LockProcessor
             }
 
             $garbage = $this->claimedGarbage($player, $input['garbage_ids']);
-            $garbageRows = $garbage->map(fn (GarbageBatch $batch) => ['lines' => $batch->lines, 'hole' => $batch->hole])->all();
+            $garbageRows = array_values($garbage->map(fn (GarbageBatch $batch) => ['lines' => $batch->lines, 'hole' => $batch->hole])->all());
 
             try {
                 $result = Simulation::applyLock($player->toState(), new Randomizer($match->seed), [

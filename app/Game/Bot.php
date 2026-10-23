@@ -2,6 +2,8 @@
 
 namespace App\Game;
 
+use InvalidArgumentException;
+
 /**
  * Server-side port of chooseMove() in resources/js/engine/bot.js: scores every hard-drop
  * placement of the current piece and of the hold swap, and picks the best one.
@@ -23,6 +25,14 @@ final class Bot
         'hard' => ['pieces_per_second' => 1.6, 'mistake_rate' => 0.08],
     ];
 
+    /**
+     * @return array{pieces_per_second: float, mistake_rate: float}
+     */
+    public static function level(string $name): array
+    {
+        return self::LEVELS[$name] ?? throw new InvalidArgumentException("Unknown bot level: {$name}.");
+    }
+
     /** Chance that a piece gets a long hesitation, and how many average pieces' time it adds. */
     private const HESITATION = ['chance' => 0.1, 'length' => 1.0];
 
@@ -36,7 +46,7 @@ final class Bot
         $roll = fn (int $salt): float => (crc32("{$seed}:{$pieceNumber}:{$salt}") % 1_000_000) / 1_000_000;
         $factor = 0.5 + 0.8 * $roll(0) + ($roll(1) < self::HESITATION['chance'] ? self::HESITATION['length'] : 0.0);
 
-        return (int) round($factor * 1000 / self::LEVELS[$level]['pieces_per_second']);
+        return (int) round($factor * 1000 / self::level($level)['pieces_per_second']);
     }
 
     /**
