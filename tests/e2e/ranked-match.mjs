@@ -176,7 +176,8 @@ await step('a lone player is paired with a house bot that plays from the server'
     expect(bot.pieces >= 4, `the bot locked ${bot.pieces} pieces (is bots:play running?)`);
     expect((await a.locator('text=BOT').count()) > 0, 'no BOT badge on the HUD');
     await a.screenshot({ path: `${OUT}/09-bot-match.png` });
-    await a.click('button:has-text("Forfeit")');
+    await a.click('[data-testid=forfeit]');
+    await a.click('[data-testid=forfeit-confirm]');
     await waitForStatus(a, 'finished');
     return `${bot.user.name} locked ${bot.pieces} pieces in about 6s`;
 });

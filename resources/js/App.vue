@@ -10,6 +10,19 @@ const router = useRouter();
 // board and its buttons fit without scrolling.
 const fitScreen = computed(() => route.meta.fitScreen === true);
 
+// On phones the top links move to a tab bar at the bottom, in thumb reach. It stays off a game page on a touch
+// screen, where the board needs the room.
+const tabs = computed(() => [
+    {
+        label: 'Play',
+        to: session.activeMatchId ? `/match/${session.activeMatchId}` : session.user ? '/play' : '/',
+        active: ['home', 'play', 'match'].includes(route.name),
+    },
+    { label: 'Practice', to: '/practice', active: route.name === 'practice' },
+    { label: 'Leaderboard', to: '/leaderboard', active: route.name === 'leaderboard' },
+    { label: 'Settings', to: '/settings', active: route.name === 'settings' },
+]);
+
 async function signOut() {
     await logout();
     router.push({ name: 'home' });
@@ -27,7 +40,7 @@ async function signOut() {
                     </span>
                     Duel Stack
                 </RouterLink>
-                <div class="flex items-center gap-4 text-sm text-slate-400" :class="{ 'pointer-coarse:max-sm:hidden': fitScreen }">
+                <div class="flex items-center gap-4 text-sm text-slate-400 max-sm:hidden">
                     <RouterLink to="/leaderboard" class="hover:text-white" active-class="text-white">Leaderboard</RouterLink>
                     <RouterLink to="/practice" class="hover:text-white" active-class="text-white">Practice</RouterLink>
                     <RouterLink to="/settings" class="hover:text-white" active-class="text-white">Settings</RouterLink>
@@ -54,8 +67,30 @@ async function signOut() {
                 </div>
             </nav>
         </header>
-        <main class="mx-auto w-full max-w-6xl flex-1 px-4 py-6" :class="{ 'pointer-coarse:flex pointer-coarse:min-h-0 pointer-coarse:flex-col pointer-coarse:py-2': fitScreen }">
+        <main
+            class="mx-auto w-full max-w-6xl flex-1 px-4 py-6"
+            :class="
+                fitScreen ? 'pointer-coarse:flex pointer-coarse:min-h-0 pointer-coarse:flex-col pointer-coarse:py-2 pointer-fine:max-sm:pb-24' : 'max-sm:pb-24'
+            "
+        >
             <RouterView :key="$route.fullPath" />
         </main>
+        <nav
+            class="fixed inset-x-0 bottom-0 z-10 grid grid-cols-4 border-t border-slate-800 bg-slate-950/95 pb-[env(safe-area-inset-bottom)] backdrop-blur sm:hidden"
+            :class="{ 'pointer-coarse:hidden': fitScreen }"
+            aria-label="Main"
+            data-testid="tab-bar"
+        >
+            <RouterLink
+                v-for="tab in tabs"
+                :key="tab.label"
+                :to="tab.to"
+                class="py-3.5 text-center text-sm font-medium"
+                :class="tab.active ? 'text-cyan-300' : 'text-slate-400'"
+                :aria-current="tab.active ? 'page' : undefined"
+            >
+                {{ tab.label }}
+            </RouterLink>
+        </nav>
     </div>
 </template>
