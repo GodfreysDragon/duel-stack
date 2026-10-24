@@ -11,6 +11,8 @@ import { session } from '../lib/session';
 const practice = usePracticeMatch();
 const { status, countdown, winner, stats, game, frame } = practice;
 const difficulty = ref('medium');
+// On a touch screen the board's box matches the canvas (see GameStage), and the buttons take the height left over.
+const boardAspect = ref(null);
 
 useKeyboard(() => game.value);
 </script>
@@ -43,8 +45,8 @@ useKeyboard(() => game.value);
             <PlayerHud :name="`Bot (${difficulty})`" :score="stats.bot.score" :lines="stats.bot.lines" :sent="stats.bot.sent" align="right" />
         </div>
 
-        <div class="relative pointer-coarse:min-h-0 pointer-coarse:flex-1">
-            <GameStage :frame="frame" fit />
+        <div class="relative pointer-coarse:mb-2 pointer-coarse:min-h-0" :style="{ aspectRatio: boardAspect }">
+            <GameStage :frame="frame" fit @aspect="boardAspect = $event" />
             <div v-if="status === 'idle'" class="absolute inset-0 grid place-items-center">
                 <p class="rounded-lg bg-slate-900/90 px-5 py-3 text-slate-300">Pick a difficulty and press <strong>Start</strong>.</p>
             </div>

@@ -8,16 +8,24 @@ import { BoardView } from '../render/BoardView';
  * smaller opponent board. `frame(dtMs)` is called on every tick and returns
  * { me, opponent } views for BoardView.update(). The canvas shrinks to fit the width it is given, and with
  * `fit` on a touch screen the height too (the parent must then have a height: see fitScreen in app.js).
+ *
+ * The `under-hold` slot sits in the empty column below the HOLD panel, scaled with the canvas.
+ *
+ * With `fit` on a touch screen it emits `aspect` (canvas width / height) once known, so the parent can size its
+ * box to the board and leave the rest of the screen to the buttons.
  */
 const props = defineProps({
     frame: { type: Function, required: true },
     fit: { type: Boolean, default: false },
 });
+const emit = defineEmits(['aspect']);
 
 const COMPACT_BELOW_PX = 640;
 const MAX_FIT_SCALE = 1.4;
 
 const host = ref(null);
+const stage = ref(null);
+const underHoldStyle = ref(null);
 const fitHeight = props.fit && window.matchMedia('(pointer: coarse)').matches;
 let app = null;
 let resizer = null;
@@ -50,10 +58,19 @@ onMounted(async () => {
     const height = me.totalH + 4;
     app.renderer.resize(width, height);
     app.stage.position.set(2, 2);
+    if (fitHeight) emit('aspect', width / height);
 
     app.canvas.classList.add('block');
     app.canvas.dataset.testid = 'game-canvas';
-    host.value.appendChild(app.canvas);
+    stage.value.prepend(app.canvas);
+
+    // In percent of the canvas, so the slot follows it as it scales.
+    const percent = (px, of) => `${(px / of) * 100}%`;
+    underHoldStyle.value = {
+        left: percent(2, width),
+        top: percent(2 + me.cell * 4, height),
+        width: percent(me.panelW, width),
+    };
 
     // Smaller when the space is. Larger only to fill a tall phone screen, by no more than the canvas resolution allows.
     const maxScale = fitHeight ? MAX_FIT_SCALE : 1;
@@ -81,5 +98,11 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-    <div ref="host" class="flex justify-center" :class="{ 'h-full': fitHeight }"></div>
+    <div ref="host" class="flex justify-center" :class="{ 'h-full': fitHeight }">
+        <div ref="stage" class="relative self-start">
+            <div v-if="underHoldStyle && $slots['under-hold']" class="absolute" :style="underHoldStyle">
+                <slot name="under-hold" />
+            </div>
+        </div>
+    </div>
 </template>

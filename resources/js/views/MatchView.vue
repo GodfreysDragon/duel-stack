@@ -2,6 +2,7 @@
 import { computed, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import GameStage from '../components/GameStage.vue';
+import MatchActions from '../components/MatchActions.vue';
 import PlayerHud from '../components/PlayerHud.vue';
 import ResultCard from '../components/ResultCard.vue';
 import TouchControls from '../components/TouchControls.vue';
@@ -22,9 +23,17 @@ const { status, error, result, countdown, me, opponent, opp, stats, game, frame 
 
 useKeyboard(() => game.value);
 
-const idleSeconds = computed(() => Math.floor(online.opponentIdleMs() / 1000));
-// Asked in the page rather than with window.confirm, which looks out of place on phones and stalls the game loop.
-const confirmingForfeit = ref(false);
+// On a touch screen the board's box matches the canvas (see GameStage), and the buttons take the height left over.
+const boardAspect = ref(null);
+// On touch screens the actions sit under the HOLD panel, leaving the bottom of the screen to the board and buttons.
+const touch = window.matchMedia('(pointer: coarse)').matches;
+const active = computed(() => status.value === 'playing' || status.value === 'countdown');
+const actionProps = computed(() => ({
+    canClaim: online.canClaim(),
+    opponentName: opponent.value.user.name,
+    idleSeconds: Math.floor(online.opponentIdleMs() / 1000),
+    resyncs: stats.resyncs,
+}));
 
 watch(status, (value) => {
     if (value === 'finished') refreshSession();
@@ -60,8 +69,12 @@ watch(status, (value) => {
                 />
             </div>
 
-            <div class="relative pointer-coarse:min-h-0 pointer-coarse:flex-1">
-                <GameStage :frame="frame" fit />
+            <div class="relative pointer-coarse:mb-2 pointer-coarse:min-h-0" :style="{ aspectRatio: boardAspect }">
+                <GameStage :frame="frame" fit @aspect="boardAspect = $event">
+                    <template v-if="touch && active" #under-hold>
+                        <MatchActions stacked v-bind="actionProps" @claim="online.claim()" @forfeit="online.forfeit()" />
+                    </template>
+                </GameStage>
 
                 <div v-if="status === 'countdown'" class="pointer-events-none absolute inset-0 grid place-items-center">
                     <span class="text-8xl font-black text-white drop-shadow-[0_0_30px_rgba(34,211,238,0.6)]" data-testid="countdown">{{ countdown }}</span>
@@ -83,36 +96,13 @@ watch(status, (value) => {
             <!-- Kept in place, hidden, outside play: the board does not jump when the buttons come and go. -->
             <TouchControls :class="{ invisible: status !== 'playing' }" @press="game?.press($event)" @release="game?.release($event)" />
 
-            <div v-if="status === 'playing' || status === 'countdown'" class="mt-4 flex shrink-0 flex-wrap items-center justify-center gap-3 text-sm pointer-coarse:justify-start">
-                <span v-if="stats.resyncs" class="text-xs text-amber-400" title="Times the server corrected this client">⟳ {{ stats.resyncs }} resync(s)</span>
-                <template v-if="online.canClaim()">
-                    <span class="text-slate-400">{{ opponent.user.name }} has been silent for {{ idleSeconds }}s.</span>
-                    <button type="button" class="rounded-lg bg-amber-500 px-4 py-1.5 font-semibold text-slate-950 pointer-coarse:py-2.5" @click="online.claim()">Claim the win</button>
-                </template>
-                <!-- "Keep playing" takes Forfeit's place (at the left edge on touch screens), so a double tap does not forfeit. -->
-                <template v-if="confirmingForfeit">
-                    <button type="button" class="rounded-lg border border-slate-700 px-4 py-1.5 hover:bg-slate-800 pointer-coarse:py-2.5" @click="confirmingForfeit = false">
-                        Keep playing
-                    </button>
-                    <button
-                        type="button"
-                        class="rounded-lg bg-red-500 px-4 py-1.5 font-semibold text-white hover:bg-red-400 pointer-coarse:py-2.5"
-                        data-testid="forfeit-confirm"
-                        @click="online.forfeit()"
-                    >
-                        Forfeit and lose
-                    </button>
-                </template>
-                <button
-                    v-else
-                    type="button"
-                    class="text-slate-500 hover:text-red-400 pointer-coarse:rounded-lg pointer-coarse:border pointer-coarse:border-slate-800 pointer-coarse:px-4 pointer-coarse:py-2.5"
-                    data-testid="forfeit"
-                    @click="confirmingForfeit = true"
-                >
-                    Forfeit
-                </button>
-            </div>
+            <MatchActions
+                v-if="!touch && active"
+                class="mt-4 shrink-0"
+                v-bind="actionProps"
+                @claim="online.claim()"
+                @forfeit="online.forfeit()"
+            />
         </template>
     </div>
 </template>
