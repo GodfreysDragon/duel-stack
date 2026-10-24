@@ -41,6 +41,7 @@ class MatchLifecycleTest extends TestCase
             ->assertJsonPath('match.players.0.user.name', $this->alice->name)
             ->assertJsonPath('match.players.1.user.name', $this->bob->name)
             ->assertJsonPath('you.state.current', $player->current)
+            ->assertJsonPath('you.garbage_through', $batch->id)
             ->assertJsonPath('you.pending_garbage', [['id' => $batch->id, 'lines' => 3, 'hole' => 2]])
             ->assertJsonStructure(['server_time']);
     }

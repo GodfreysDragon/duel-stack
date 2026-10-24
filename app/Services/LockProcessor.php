@@ -33,7 +33,7 @@ class LockProcessor
 
     /**
      * @param  array{piece_number: int, piece: string, rotation: int, x: int, y: int, held: bool, garbage_ids: list<int>}  $input
-     * @return array{state: array<string, mixed>, cleared: list<int>, attack: int, sent: array{id: int, lines: int, hole: int}|null, match_over: bool}
+     * @return array{state: array<string, mixed>, cleared: list<int>, attack: int, sent: array{id: int, lines: int, hole: int}|null, garbage_through: int, pending_garbage: list<array{id: int, lines: int, hole: int}>, match_over: bool}
      *
      * @throws LockRejected
      */
@@ -140,6 +140,8 @@ class LockProcessor
             'cleared' => $result['cleared'],
             'attack' => $result['attack'],
             'sent' => $sent?->toClientArray(),
+            // Read before the pending list, so no batch can fall between the two.
+            'garbage_through' => $player->garbageThrough(),
             'pending_garbage' => $player->pendingGarbageForClient(),
             'match_over' => $player->topped_out,
         ];

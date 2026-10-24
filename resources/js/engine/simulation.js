@@ -132,11 +132,12 @@ export function cancelGarbage(pending, attack) {
 /**
  * Reconciles a client's pending garbage with the server's list from a lock response. The server's
  * lines win (it may have cancelled more than the client knew about). A local batch the server
- * no longer lists was cancelled, unless it is newer than anything the server listed: that one
- * may have been sent after the response was built, so it is kept.
+ * no longer lists was cancelled, unless it is newer than anything the server accounted for (its
+ * `through`, see MatchPlayer::garbageThrough()): that one may have been sent after the response
+ * was built, so it is kept.
  */
-export function mergePendingGarbage(server, local) {
-    const newest = Math.max(0, ...server.map((b) => b.id));
+export function mergePendingGarbage(server, local, through = 0) {
+    const newest = Math.max(through, ...server.map((b) => b.id));
     return [...server.map((b) => ({ ...b })), ...local.filter((b) => b.id > newest)];
 }
 

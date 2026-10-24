@@ -94,6 +94,7 @@ class LockSubmissionTest extends TestCase
             ->assertJsonPath('message', 'Piece is floating.')
             ->assertJsonPath('state.pieces', 0)
             ->assertJsonPath('state.current', 'I')
+            ->assertJsonPath('garbage_through', 0)
             ->assertJsonPath('pending_garbage', []);
 
         $this->assertDatabaseEmpty('match_moves');
@@ -185,12 +186,15 @@ class LockSubmissionTest extends TestCase
 
     public function test_only_the_attack_left_after_cancelling_is_sent_and_counted(): void
     {
-        $this->player($this->alice)->incomingGarbage()->create(['lines' => 3, 'hole' => 0, 'created_at' => now()]);
+        $batch = $this->player($this->alice)->incomingGarbage()->create(['lines' => 3, 'hole' => 0, 'created_at' => now()]);
         $this->arrange($this->alice, ['G.........', ...array_fill(0, 4, 'GGGGGGGGG.')], 'I');
 
+        // The cancelled batch drops out of the list, but garbage_through still covers it, so the client ignores a
+        // garbage.sent broadcast for it that arrives late.
         $this->submit($this->alice, $this->lock(['rotation' => 1, 'x' => 7, 'y' => 18]))
             ->assertOk()
             ->assertJsonPath('sent.lines', 1)
+            ->assertJsonPath('garbage_through', $batch->id)
             ->assertJsonPath('pending_garbage', []);
 
         $this->assertSame(1, $this->player($this->alice)->garbage_sent);

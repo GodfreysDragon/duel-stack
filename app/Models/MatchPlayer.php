@@ -82,6 +82,16 @@ class MatchPlayer extends Model
     }
 
     /**
+     * The id of the newest batch ever sent to this player (0 if none). A pending list read after this accounts for
+     * every batch up to it, even one an attack cancelled outright, so the client drops a late garbage.sent broadcast
+     * for such a batch instead of raising garbage that no longer exists.
+     */
+    public function garbageThrough(): int
+    {
+        return (int) $this->incomingGarbage()->reorder()->max('id');
+    }
+
+    /**
      * @return HasMany<MatchMove, $this>
      */
     public function moves(): HasMany

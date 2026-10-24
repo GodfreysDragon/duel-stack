@@ -42,6 +42,7 @@ function expect(condition, message) {
 
 const browser = await chromium.launch({ channel: process.env.E2E_BROWSER ?? 'msedge', headless: true });
 const pages = {};
+const resyncReasons = [];
 for (const who of ['A', 'B']) {
     const context = await browser.newContext({ viewport: { width: 1280, height: 860 } });
     const page = await context.newPage();
@@ -50,6 +51,7 @@ for (const who of ['A', 'B']) {
         results.push(`PAGE ERROR ${who}: ${e.message}`);
     });
     page.on('dialog', (d) => d.accept());
+    page.on('console', (m) => m.text().startsWith('[match] resynced') && resyncReasons.push(`${who}: ${m.text()}`));
     pages[who] = page;
 }
 const { A: a, B: b } = pages;
@@ -98,7 +100,7 @@ await step(`both autopilots play for ${BOT_PHASE_MS / 1000}s with every lock val
     expect(midMatch.match.status === 'active', `match is ${midMatch.match.status}`);
     expect(p1.pieces > 15 && p2.pieces > 15, `pieces ${p1.pieces}/${p2.pieces}`);
     const resyncs = await Promise.all([a, b].map((p) => p.locator('text=/resync/').count()));
-    expect(resyncs.every((n) => n === 0), 'a client needed a server resync');
+    expect(resyncs.every((n) => n === 0), `a client needed a server resync (${resyncReasons.join('; ')})`);
     return `${p1.user.name}: ${p1.pieces} pieces, ${p1.lines} lines, sent ${p1.garbage_sent}; ${p2.user.name}: ${p2.pieces} pieces, ${p2.lines} lines, sent ${p2.garbage_sent}`;
 });
 
@@ -173,7 +175,8 @@ await step('a lone player is paired with a house bot that plays from the server'
     const { match } = await apiGet(a, `/api/matches/${botMatchId}`);
     const bot = match.players.find((p) => p.user.is_bot);
     expect(bot, 'no bot in the match');
-    expect(bot.pieces >= 4, `the bot locked ${bot.pieces} pieces (is bots:play running?)`);
+    // The easy bot averages 0.6 pieces a second, so allow for a slow start.
+    expect(bot.pieces >= 2, `the bot locked ${bot.pieces} pieces (is bots:play running?)`);
     expect((await a.locator('text=BOT').count()) > 0, 'no BOT badge on the HUD');
     await a.screenshot({ path: `${OUT}/09-bot-match.png` });
     await a.click('[data-testid=forfeit]');

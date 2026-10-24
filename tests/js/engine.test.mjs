@@ -182,4 +182,6 @@ test("the server's pending garbage wins, but batches newer than its list are kep
     const local = [{ id: 3, lines: 2, hole: 0 }, { id: 4, lines: 3, hole: 2 }, { id: 6, lines: 2, hole: 5 }];
     assert.deepEqual(mergePendingGarbage(server, local), [{ id: 4, lines: 1, hole: 2 }, { id: 6, lines: 2, hole: 5 }]);
     assert.deepEqual(mergePendingGarbage([], local), local);
+    // Batch 6 is not listed but the server accounted for it: an attack cancelled it outright.
+    assert.deepEqual(mergePendingGarbage(server, local, 6), [{ id: 4, lines: 1, hole: 2 }]);
 });

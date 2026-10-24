@@ -52,9 +52,15 @@ export function useOnlineMatch(matchId, { autopilot = false } = {}) {
 
     let clockOffset = 0;
     let channel = null;
-    let queue = []; // [{ body, sent }]: locks waiting to be POSTed, with the garbage each sends
+    let queue = []; // [{ body, sent, attack }]: locks waiting to be POSTed, with the garbage each sends and its attack
     let sending = false;
     let confirmedSent = 0;
+    // The newest garbage batch the server's last pending list accounted for: a later garbage.sent broadcast for it is
+    // stale (the batch may have been cancelled outright meanwhile).
+    let garbageThrough = 0;
+    // Batches that arrived while a lock that attacks was unconfirmed: the server may have used that attack to cancel
+    // them, so they wait for its pending list (garbage has a grace period, so this is safe).
+    let deferredGarbage = [];
     const expectedBoards = new Map();
     let lastWhisper = 0;
     let lastWhispered = '';
@@ -86,6 +92,7 @@ export function useOnlineMatch(matchId, { autopilot = false } = {}) {
             });
 
             const g = new Game({ seed: data.match.seed, onLock, onTopOut: waitForResult, handling: settings.handling });
+            garbageThrough = data.you.garbage_through;
             if (data.you.state.pieces > 0 || data.you.pending_garbage.length) {
                 g.resync(toEngineState(data.you.state), data.you.pending_garbage);
             }
@@ -147,10 +154,10 @@ export function useOnlineMatch(matchId, { autopilot = false } = {}) {
                 else showOpponentBoard(e);
             })
             .listen('.garbage.sent', (e) => {
-                if (e.from_user_id !== session.user.id) {
-                    game.value?.receiveGarbage(e.batch);
-                    sfx.incoming();
-                }
+                if (e.from_user_id === session.user.id || e.batch.id <= garbageThrough) return;
+                if (queue.some((item) => item.attack > 0)) deferredGarbage.push(e.batch);
+                else game.value?.receiveGarbage(e.batch);
+                sfx.incoming();
             })
             .listen('.match.ended', (e) => finish(e.match))
             .listenForWhisper('piece', (piece) => {
@@ -190,6 +197,7 @@ export function useOnlineMatch(matchId, { autopilot = false } = {}) {
                 garbage_ids: lock.garbageIds,
             },
             sent: outcome.sent,
+            attack: outcome.attack,
         });
         updateSent();
         pump();
@@ -212,8 +220,10 @@ export function useOnlineMatch(matchId, { autopilot = false } = {}) {
             const expected = expectedBoards.get(item.body.piece_number);
             expectedBoards.delete(item.body.piece_number);
             if (queue.length === 0 && !response.match_over) {
-                const pending = mergePendingGarbage(response.pending_garbage, game.value.pendingGarbage);
-                if (response.state.board !== expected) resync(response.state, pending);
+                garbageThrough = Math.max(garbageThrough, response.garbage_through);
+                const pending = mergePendingGarbage(response.pending_garbage, [...game.value.pendingGarbage, ...deferredGarbage], garbageThrough);
+                deferredGarbage = [];
+                if (response.state.board !== expected) resync(response.state, pending, `board differs after piece #${item.body.piece_number}`);
                 else game.value.pendingGarbage = pending;
             }
             if (response.match_over) waitForResult();
@@ -225,7 +235,10 @@ export function useOnlineMatch(matchId, { autopilot = false } = {}) {
                 if (e.data?.message === 'The match is over.') {
                     await refreshResult();
                 } else if (e.data?.state) {
-                    resync(e.data.state, e.data.pending_garbage);
+                    garbageThrough = Math.max(garbageThrough, e.data.garbage_through);
+                    const pending = mergePendingGarbage(e.data.pending_garbage, [...game.value.pendingGarbage, ...deferredGarbage], garbageThrough);
+                    deferredGarbage = [];
+                    resync(e.data.state, pending, `lock rejected: ${e.data.message}`);
                 }
             } else {
                 // Network trouble: keep the queue and retry. A lock that did land
@@ -238,8 +251,9 @@ export function useOnlineMatch(matchId, { autopilot = false } = {}) {
         }
     }
 
-    function resync(state, pendingGarbage) {
+    function resync(state, pendingGarbage, reason) {
         stats.resyncs++;
+        console.warn(`[match] resynced to the server: ${reason}`);
         game.value.resync(toEngineState(state), pendingGarbage);
         stats.score = state.score;
         stats.lines = state.lines;
