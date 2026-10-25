@@ -2,10 +2,12 @@
 
 namespace Tests\Unit;
 
+use App\Game\Bot;
 use App\Game\Pieces;
 use App\Game\PlayerState;
 use App\Game\Randomizer;
 use App\Game\Reachability;
+use App\Game\Rules;
 use App\Game\Simulation;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -87,6 +89,24 @@ class EngineParityTest extends TestCase
                 'attack' => $result['attack'],
             ], "Lock #{$number} diverged.");
         }
+    }
+
+    public function test_the_rule_constants_match_the_js_engine(): void
+    {
+        $this->assertSame(self::fixture()['rules'], [
+            'garbageGraceMs' => Rules::GARBAGE_GRACE_MS,
+            'linePoints' => Rules::LINE_POINTS,
+            'lineAttack' => Rules::LINE_ATTACK,
+            'comboAttack' => Rules::COMBO_ATTACK,
+            'comboPoints' => Rules::COMBO_POINTS,
+            'b2bAttackBonus' => Rules::B2B_ATTACK_BONUS,
+            'perfectClearAttack' => Rules::PERFECT_CLEAR_ATTACK,
+            'perfectClearPoints' => Rules::PERFECT_CLEAR_POINTS,
+            'botLevels' => array_map(
+                fn (array $level) => ['piecesPerSecond' => $level['pieces_per_second'], 'mistakeRate' => $level['mistake_rate']],
+                Bot::LEVELS,
+            ),
+        ]);
     }
 
     public function test_the_srs_kick_tables_match_the_js_engine(): void

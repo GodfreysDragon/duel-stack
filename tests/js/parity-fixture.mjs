@@ -1,6 +1,6 @@
-// Builds the cross-language parity fixture: piece sequences, SRS kick tables and whole bot games
-// (with holds, combos and incoming garbage) and the expected state after every
-// lock. tests/Unit/EngineParityTest.php replays it through the PHP engine.
+// Builds the cross-language parity fixture: piece sequences, SRS kick tables, the rule constants both
+// sides hard-code, and whole bot games (with holds, combos and incoming garbage) and the expected
+// state after every lock. tests/Unit/EngineParityTest.php replays it through the PHP engine.
 //
 //   node tests/js/parity-fixture.mjs           write tests/Fixtures/engine-parity.json
 //   import { buildFixture } from ...           (used by engine.test.mjs to check it is current)
@@ -10,8 +10,10 @@ import { fileURLToPath } from 'node:url';
 import { Randomizer } from '../../resources/js/engine/randomizer.js';
 import { applyLock, initialState } from '../../resources/js/engine/simulation.js';
 import { serialize } from '../../resources/js/engine/board.js';
-import { chooseMove } from '../../resources/js/engine/bot.js';
-import { PIECE_TYPES, kicksFor } from '../../resources/js/engine/constants.js';
+import { DIFFICULTIES, chooseMove } from '../../resources/js/engine/bot.js';
+import * as constants from '../../resources/js/engine/constants.js';
+
+const { PIECE_TYPES, kicksFor } = constants;
 
 export const FIXTURE_PATH = fileURLToPath(new URL('../Fixtures/engine-parity.json', import.meta.url));
 
@@ -72,6 +74,19 @@ export function buildFixture() {
             return { seed, pieces: Array.from({ length: 70 }, (_, i) => randomizer.piece(i)).join('') };
         }),
         games: [1, 42, 2024, 31337].map((seed) => playGame(seed, 250)),
+        // Constants the client and server each define. The games above exercise most of them; listing them
+        // catches a one-sided change before it shows up as resyncs.
+        rules: {
+            garbageGraceMs: constants.GARBAGE_GRACE_MS,
+            linePoints: constants.LINE_POINTS,
+            lineAttack: constants.LINE_ATTACK,
+            comboAttack: constants.COMBO_ATTACK,
+            comboPoints: constants.COMBO_POINTS,
+            b2bAttackBonus: constants.B2B_ATTACK_BONUS,
+            perfectClearAttack: constants.PERFECT_CLEAR_ATTACK,
+            perfectClearPoints: constants.PERFECT_CLEAR_POINTS,
+            botLevels: DIFFICULTIES,
+        },
         // SRS kicks for every turn between adjacent rotation states, keyed "I0>1".
         kicks: Object.fromEntries(
             PIECE_TYPES.flatMap((type) =>
