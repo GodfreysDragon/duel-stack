@@ -41,7 +41,8 @@ class BotDriver
 
     private function play(MatchPlayer $bot): bool
     {
-        $match = $bot->gameMatch;
+        // tick() only picks players of an active match, so the match is there.
+        $match = $bot->gameMatch ?? throw new LogicException("Player {$bot->id} has no match.");
         $level = $bot->user->bot_level ?? throw new LogicException("Player {$bot->id} is not a bot.");
 
         $lastLock = $bot->last_active_at ?? $match->starts_at;

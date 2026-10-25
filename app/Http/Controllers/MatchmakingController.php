@@ -3,9 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\QueueEntry;
+use App\Models\User;
 use App\Services\Matchmaker;
+use Illuminate\Container\Attributes\CurrentUser;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 
 class MatchmakingController extends Controller
@@ -13,9 +14,8 @@ class MatchmakingController extends Controller
     /**
      * Join the queue, or keep a place in it: clients call this every couple of seconds while searching.
      */
-    public function store(Request $request, Matchmaker $matchmaker): JsonResponse
+    public function store(#[CurrentUser] User $user, Matchmaker $matchmaker): JsonResponse
     {
-        $user = $request->user();
         $match = $matchmaker->join($user);
         $entry = $match === null ? QueueEntry::query()->firstWhere('user_id', $user->id) : null;
 
@@ -36,9 +36,9 @@ class MatchmakingController extends Controller
         ]);
     }
 
-    public function destroy(Request $request, Matchmaker $matchmaker): Response
+    public function destroy(#[CurrentUser] User $user, Matchmaker $matchmaker): Response
     {
-        $matchmaker->leave($request->user());
+        $matchmaker->leave($user);
 
         return response()->noContent();
     }

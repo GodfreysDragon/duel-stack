@@ -10,6 +10,7 @@ use App\Models\QueueEntry;
 use App\Models\User;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use LogicException;
 
 /**
  * Rating-aware matchmaking queue.
@@ -65,7 +66,7 @@ class Matchmaker
                 QueueEntry::query()->whereKey(array_filter([$entry->id, $opponent?->id]))->delete();
 
                 return $opponent !== null
-                    ? $this->createMatch($opponent->user, $user)
+                    ? $this->createMatch($opponent->user ?? throw new LogicException("Queue entry {$opponent->id} has no user."), $user)
                     : $this->createMatch($user, $this->bots->closestTo($user->rating));
             });
         });

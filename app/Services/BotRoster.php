@@ -46,6 +46,6 @@ class BotRoster
      */
     public function closestTo(int $rating): User
     {
-        return $this->all()->sortBy(fn (User $bot) => abs($bot->rating - $rating))->first();
+        return $this->all()->sortBy(fn (User $bot) => abs($bot->rating - $rating))->firstOrFail();
     }
 }

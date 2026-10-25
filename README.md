@@ -145,7 +145,7 @@ npm run test:js                   # node:test: the JS engine, the game controlle
 npm run fixture                   # regenerate the parity fixture after changing the engine
 ```
 
-CI runs the PHP suite on both SQLite and MySQL 8.4, the JS tests, Pint and Larastan (PHPStan level 7) on every push.
+CI runs the PHP suite on both SQLite and MySQL 8.4, the JS tests, Pint and Larastan (PHPStan level 8) on every push.
 
 **End to end.** `tests/e2e/ranked-match.mjs` drives two headless browsers through a complete ranked match against a
 running app. The steps are: registration, matchmaking, the countdown, 25 seconds of play with every lock validated,

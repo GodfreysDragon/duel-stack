@@ -6,10 +6,11 @@ use App\Http\Requests\SubmitLockRequest;
 use App\Http\Resources\MatchResource;
 use App\Models\GameMatch;
 use App\Models\MatchPlayer;
+use App\Models\User;
 use App\Services\LockProcessor;
 use App\Services\MatchFinisher;
+use Illuminate\Container\Attributes\CurrentUser;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
@@ -22,12 +23,12 @@ class MatchController extends Controller
     /**
      * The match, plus (for a player) their own authoritative state to resume from after a reload.
      */
-    public function show(Request $request, GameMatch $match): JsonResponse
+    public function show(#[CurrentUser] User $user, GameMatch $match): JsonResponse
     {
         Gate::authorize('view', $match);
 
         $match->load('players.user');
-        $you = $match->players->firstWhere('user_id', $request->user()->id);
+        $you = $match->players->firstWhere('user_id', $user->id);
 
         return response()->json([
             'match' => MatchResource::make($match),
@@ -40,22 +41,22 @@ class MatchController extends Controller
         ]);
     }
 
-    public function lock(SubmitLockRequest $request, GameMatch $match, LockProcessor $processor): JsonResponse
+    public function lock(SubmitLockRequest $request, #[CurrentUser] User $user, GameMatch $match, LockProcessor $processor): JsonResponse
     {
         Gate::authorize('play', $match);
 
-        return response()->json($processor->submit($match, $request->user(), $request->lock()));
+        return response()->json($processor->submit($match, $user, $request->lock()));
     }
 
-    public function forfeit(Request $request, GameMatch $match, MatchFinisher $finisher): JsonResponse
+    public function forfeit(#[CurrentUser] User $user, GameMatch $match, MatchFinisher $finisher): JsonResponse
     {
         Gate::authorize('play', $match);
 
-        return DB::transaction(function () use ($request, $match, $finisher) {
+        return DB::transaction(function () use ($user, $match, $finisher) {
             $match = GameMatch::query()->lockForUpdate()->findOrFail($match->id);
             abort_if($match->isFinished(), 409, 'The match is already over.');
 
-            $finisher->finish($match, $this->opponentOf($match, $request), MatchFinisher::REASON_FORFEIT);
+            $finisher->finish($match, $this->opponentOf($match, $user), MatchFinisher::REASON_FORFEIT);
 
             return response()->json(['match' => MatchResource::make($match->load('players.user'))]);
         });
@@ -64,12 +65,12 @@ class MatchController extends Controller
     /**
      * Sent every few seconds by a running, visible game, so a player between locks is not mistaken for one who left.
      */
-    public function heartbeat(Request $request, GameMatch $match): Response
+    public function heartbeat(#[CurrentUser] User $user, GameMatch $match): Response
     {
         Gate::authorize('play', $match);
 
         if (! $match->isFinished()) {
-            $match->players()->whereBelongsTo($request->user())->update(['last_seen_at' => now()]);
+            $match->players()->whereBelongsTo($user)->update(['last_seen_at' => now()]);
         }
 
         return response()->noContent();
@@ -78,17 +79,17 @@ class MatchController extends Controller
     /**
      * Win by default when the opponent has stopped playing (closed the tab, lost connection, ...).
      */
-    public function claim(Request $request, GameMatch $match, MatchFinisher $finisher): JsonResponse
+    public function claim(#[CurrentUser] User $user, GameMatch $match, MatchFinisher $finisher): JsonResponse
     {
         Gate::authorize('play', $match);
 
-        return DB::transaction(function () use ($request, $match, $finisher) {
+        return DB::transaction(function () use ($user, $match, $finisher) {
             $match = GameMatch::query()->lockForUpdate()->findOrFail($match->id);
             abort_if($match->isFinished(), 409, 'The match is already over.');
 
-            abort_unless($this->opponentOf($match, $request)->hasAbandoned($match), 409, 'Your opponent is still playing.');
+            abort_unless($this->opponentOf($match, $user)->hasAbandoned($match), 409, 'Your opponent is still playing.');
 
-            $winner = $match->players()->whereBelongsTo($request->user())->firstOrFail();
+            $winner = $match->players()->whereBelongsTo($user)->firstOrFail();
             $finisher->finish($match, $winner, MatchFinisher::REASON_ABANDONED);
 
             return response()->json(['match' => MatchResource::make($match->load('players.user'))]);
@@ -134,8 +135,8 @@ class MatchController extends Controller
         ]);
     }
 
-    private function opponentOf(GameMatch $match, Request $request): MatchPlayer
+    private function opponentOf(GameMatch $match, User $user): MatchPlayer
     {
-        return $match->players()->where('user_id', '!=', $request->user()->id)->firstOrFail();
+        return $match->players()->where('user_id', '!=', $user->id)->firstOrFail();
     }
 }

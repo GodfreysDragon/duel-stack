@@ -34,8 +34,8 @@ class MatchFinisher
         ]);
 
         if ($winner !== null) {
-            $loser = $players->firstWhere('id', '!=', $winner->id);
-            $winner = $players->firstWhere('id', $winner->id);
+            $loser = $players->sole(fn (MatchPlayer $player) => $player->id !== $winner->id);
+            $winner = $players->sole(fn (MatchPlayer $player) => $player->id === $winner->id);
             [$winnerRating, $loserRating] = Elo::afterGame($winner->rating_before, $loser->rating_before);
 
             $this->record($winner, $winnerRating, won: true);
@@ -44,7 +44,7 @@ class MatchFinisher
             $players->each(fn (MatchPlayer $player) => $player->update(['rating_after' => $player->rating_before]));
         }
 
-        DB::afterCommit(fn () => MatchEnded::dispatch($match->fresh(['players.user'])));
+        DB::afterCommit(fn () => MatchEnded::dispatch(GameMatch::query()->with('players.user')->findOrFail($match->id)));
     }
 
     /**

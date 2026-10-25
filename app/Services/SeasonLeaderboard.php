@@ -42,7 +42,7 @@ class SeasonLeaderboard
             ->withMax(['matchPlayers as season_best_score' => $playedInSeason], 'score')
             ->orderByDesc($sort === 'best_score' ? 'season_best_score' : 'rating')
             ->orderBy('id')
-            ->when($limit !== null, fn (Builder $query) => $query->limit($limit))
+            ->when($limit, fn (Builder $query, int $limit) => $query->limit($limit))
             ->get()
             ->map(fn (User $user) => [
                 'user' => $user,
@@ -62,7 +62,7 @@ class SeasonLeaderboard
             ->with('user')
             ->when($sort === 'best_score', fn ($query) => $query->orderByDesc('best_score'), fn ($query) => $query->orderBy('rank'))
             ->orderBy('id')
-            ->when($limit !== null, fn ($query) => $query->limit($limit))
+            ->when($limit, fn ($query, int $limit) => $query->limit($limit))
             ->get()
             // Standings are deleted with their user, so a missing one is only possible mid-deletion.
             ->flatMap(fn (SeasonStanding $standing) => $standing->user === null ? [] : [[

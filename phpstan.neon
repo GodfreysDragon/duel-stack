@@ -8,6 +8,6 @@ parameters:
         - config
         - database
         - routes
-    level: 7
+    level: 8
     # The models declare casts() as array<string, string>; read the actual array so casts are typed.
     parseModelCastsMethod: true
