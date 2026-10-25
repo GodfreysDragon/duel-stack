@@ -135,7 +135,13 @@ sudo apt-get update && sudo apt-get install -y git                              
 git clone https://github.com/GodfreysDragon/duel-stack.git /tmp/duel-stack
 sudo bash /tmp/duel-stack/deploy/setup.sh duel-stack.example.com you@example.com   # once
 bash /var/www/stack-duel/deploy/update.sh                                          # each deploy
+bash /var/www/stack-duel/deploy/update.sh --rollback                               # back to the previous release
 ```
+
+Each deploy builds a fresh release in `/var/www/stack-duel-deploy/releases` while the current one keeps serving, backs
+up the database, migrates, and then switches the `/var/www/stack-duel` symlink in one step. The last 3 releases and 10
+database backups are kept. `.env`, `storage/` and the SQLite database live in `/var/www/stack-duel-deploy/shared`.
+A rollback switches the code back but leaves migrations applied.
 
 ## Tests
 
