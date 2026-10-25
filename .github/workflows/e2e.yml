@@ -1,0 +1,58 @@
+name: End-to-end
+
+# Two browsers play a real ranked match through the app server, Reverb and the bot driver
+# (tests/e2e/ranked-match.mjs). Slower than CI, so it runs nightly and on demand rather than on every push.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 6 * * *'
+
+jobs:
+  e2e:
+    name: Ranked match in two browsers
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: pdo_sqlite
+          coverage: none
+      - run: composer install --no-interaction --no-progress --prefer-dist
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: Configure the app
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+          touch database/database.sqlite
+          php artisan migrate --force
+      # The test hands both players to the bot autopilot, which production builds leave out.
+      - run: npm run build
+        env:
+          VITE_E2E_AUTOPILOT: 'true'
+      - name: Start the app server, Reverb and the bot driver
+        run: |
+          mkdir -p storage/e2e
+          nohup php artisan serve --port=8040 > storage/e2e/serve.log 2>&1 &
+          nohup php artisan reverb:start > storage/e2e/reverb.log 2>&1 &
+          nohup php artisan bots:play > storage/e2e/bots.log 2>&1 &
+          timeout 30 bash -c 'until curl -sf http://127.0.0.1:8040 > /dev/null; do sleep 1; done'
+          timeout 30 bash -c 'until (echo > /dev/tcp/127.0.0.1/8085) 2> /dev/null; do sleep 1; done'
+      # The runner image ships Google Chrome; playwright-core drives it without downloading a browser.
+      - run: npm run test:e2e
+        env:
+          E2E_BROWSER: chrome
+      - name: Keep screenshots and logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e
+          path: |
+            storage/e2e
+            storage/logs
+          retention-days: 7

@@ -146,6 +146,7 @@ npm run fixture                   # regenerate the parity fixture after changing
 ```
 
 CI runs the PHP suite on both SQLite and MySQL 8.4, the JS tests, Pint and Larastan (PHPStan level 8) on every push.
+The end-to-end test below runs nightly and on demand (the End-to-end workflow), and Dependabot opens weekly update PRs.
 
 **End to end.** `tests/e2e/ranked-match.mjs` drives two headless browsers through a complete ranked match against a
 running app. The steps are: registration, matchmaking, the countdown, 25 seconds of play with every lock validated,
