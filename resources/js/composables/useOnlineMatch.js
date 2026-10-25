@@ -3,8 +3,8 @@ import { api, ApiError } from '../lib/api';
 import { echo } from '../lib/echo';
 import { session } from '../lib/session';
 import { Game } from '../engine/game.js';
-import { deserialize, emptyBoard, serialize } from '../engine/board.js';
-import { mergePendingGarbage } from '../engine/simulation.js';
+import { deserialize, emptyBoard } from '../engine/board.js';
+import { LockSync } from '../engine/lockSync.js';
 import { chooseMove } from '../engine/bot.js';
 import { createLockPlayback } from '../lib/lockPlayback';
 import { settings } from '../lib/settings';
@@ -21,9 +21,8 @@ const toEngineState = (state) => ({ ...state, board: deserialize(state.board) })
 /**
  * Client side of a ranked match.
  *
- * The local Game runs ahead optimistically; every lock goes into a queue that
- * is POSTed in order. The server answers with its own state: if it disagrees,
- * or rejects a lock (409), the game resyncs to the server's state.
+ * The local Game runs ahead optimistically; LockSync sends its locks in order and
+ * resyncs the game when the server disagrees or rejects one (409).
  * Opponent boards and garbage arrive over the match's presence channel, and the
  * opponent's falling piece arrives as a client whisper. House bots don't whisper, so their
  * locks are played back as a falling piece, a fraction of a second behind the server.
@@ -52,16 +51,14 @@ export function useOnlineMatch(matchId, { autopilot = false } = {}) {
 
     let clockOffset = 0;
     let channel = null;
-    let queue = []; // [{ body, sent, attack }]: locks waiting to be POSTed, with the garbage each sends and its attack
-    let sending = false;
-    let confirmedSent = 0;
-    // The newest garbage batch the server's last pending list accounted for: a later garbage.sent broadcast for it is
-    // stale (the batch may have been cancelled outright meanwhile).
-    let garbageThrough = 0;
-    // Batches that arrived while a lock that attacks was unconfirmed: the server may have used that attack to cancel
-    // them, so they wait for its pending list (garbage has a grace period, so this is safe).
-    let deferredGarbage = [];
-    const expectedBoards = new Map();
+    const sync = new LockSync({
+        post: (body) => api('POST', `${url}/locks`, body),
+        game: () => game.value,
+        onResync: resync,
+        onMatchOver: waitForResult,
+        onMatchClosed: () => refreshResult().catch(() => {}),
+        onProgress: () => (stats.sent = sync.sent),
+    });
     let lastWhisper = 0;
     let lastWhispered = '';
     let lastHeartbeat = 0;
@@ -92,13 +89,13 @@ export function useOnlineMatch(matchId, { autopilot = false } = {}) {
             });
 
             const g = new Game({ seed: data.match.seed, onLock, onTopOut: waitForResult, handling: settings.handling });
-            garbageThrough = data.you.garbage_through;
+            sync.garbageThrough = data.you.garbage_through;
             if (data.you.state.pieces > 0 || data.you.pending_garbage.length) {
                 g.resync(toEngineState(data.you.state), data.you.pending_garbage);
             }
             game.value = g;
-            confirmedSent = me.value.garbage_sent;
-            Object.assign(stats, { score: data.you.state.score, lines: data.you.state.lines, sent: confirmedSent });
+            sync.confirmedSent = me.value.garbage_sent;
+            Object.assign(stats, { score: data.you.state.score, lines: data.you.state.lines, sent: sync.sent });
 
             subscribe();
             startCountdown(Date.parse(data.match.starts_at));
@@ -154,10 +151,7 @@ export function useOnlineMatch(matchId, { autopilot = false } = {}) {
                 else showOpponentBoard(e);
             })
             .listen('.garbage.sent', (e) => {
-                if (e.from_user_id === session.user.id || e.batch.id <= garbageThrough) return;
-                if (queue.some((item) => item.attack > 0)) deferredGarbage.push(e.batch);
-                else game.value?.receiveGarbage(e.batch);
-                sfx.incoming();
+                if (e.from_user_id !== session.user.id && sync.receive(e.batch)) sfx.incoming();
             })
             .listen('.match.ended', (e) => finish(e.match))
             .listenForWhisper('piece', (piece) => {
@@ -181,74 +175,11 @@ export function useOnlineMatch(matchId, { autopilot = false } = {}) {
     // ---- locks ----------------------------------------------------------------
 
     function onLock(lock, outcome) {
-        const pieceNumber = outcome.state.pieces - 1;
-        expectedBoards.set(pieceNumber, serialize(outcome.state.board));
         stats.score = outcome.state.score;
         stats.lines = outcome.state.lines;
         if (!autopilot) sfx.lock(outcome.cleared.length);
-        queue.push({
-            body: {
-                piece_number: pieceNumber,
-                piece: lock.piece,
-                rotation: lock.rotation,
-                x: lock.x,
-                y: lock.y,
-                held: lock.held,
-                garbage_ids: lock.garbageIds,
-            },
-            sent: outcome.sent,
-            attack: outcome.attack,
-        });
-        updateSent();
-        pump();
-    }
-
-    /** Garbage the server confirmed, plus what the locks still in flight should send. */
-    function updateSent() {
-        stats.sent = confirmedSent + queue.reduce((sum, item) => sum + item.sent, 0);
-    }
-
-    async function pump() {
-        if (sending || queue.length === 0 || status.value === 'finished') return;
-        sending = true;
-        const item = queue[0];
-        try {
-            const response = await api('POST', `${url}/locks`, item.body);
-            queue.shift();
-            confirmedSent += response.sent?.lines ?? 0;
-            updateSent();
-            const expected = expectedBoards.get(item.body.piece_number);
-            expectedBoards.delete(item.body.piece_number);
-            if (queue.length === 0 && !response.match_over) {
-                garbageThrough = Math.max(garbageThrough, response.garbage_through);
-                const pending = mergePendingGarbage(response.pending_garbage, [...game.value.pendingGarbage, ...deferredGarbage], garbageThrough);
-                deferredGarbage = [];
-                if (response.state.board !== expected) resync(response.state, pending, `board differs after piece #${item.body.piece_number}`);
-                else game.value.pendingGarbage = pending;
-            }
-            if (response.match_over) waitForResult();
-        } catch (e) {
-            if (e instanceof ApiError && e.status === 409) {
-                queue = [];
-                updateSent();
-                expectedBoards.clear();
-                if (e.data?.message === 'The match is over.') {
-                    await refreshResult();
-                } else if (e.data?.state) {
-                    garbageThrough = Math.max(garbageThrough, e.data.garbage_through);
-                    const pending = mergePendingGarbage(e.data.pending_garbage, [...game.value.pendingGarbage, ...deferredGarbage], garbageThrough);
-                    deferredGarbage = [];
-                    resync(e.data.state, pending, `lock rejected: ${e.data.message}`);
-                }
-            } else {
-                // Network trouble: keep the queue and retry. A lock that did land
-                // comes back as a 409 "expected piece #n" and triggers a resync.
-                await new Promise((resolve) => setTimeout(resolve, 600));
-            }
-        } finally {
-            sending = false;
-            pump();
-        }
+        sync.push(lock, outcome);
+        stats.sent = sync.sent;
     }
 
     function resync(state, pendingGarbage, reason) {
@@ -286,7 +217,7 @@ export function useOnlineMatch(matchId, { autopilot = false } = {}) {
         match.value = finalMatch;
         result.value = finalMatch;
         status.value = 'finished';
-        queue = [];
+        sync.stop();
         session.activeMatchId = null;
     }
 

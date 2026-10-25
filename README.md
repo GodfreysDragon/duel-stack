@@ -141,7 +141,7 @@ bash /var/www/stack-duel/deploy/update.sh                                       
 
 ```sh
 php artisan test                  # PHPUnit: engine parity, rules, the bot, matchmaking, locks, garbage, Elo, channels, ...
-npm run test:js                   # node:test: the JS engine, the game controller and the bot
+npm run test:js                   # node:test: the JS engine, the game controller, lock sync with the server and the bot
 npm run fixture                   # regenerate the parity fixture after changing the engine
 ```
 
