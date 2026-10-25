@@ -1,11 +1,10 @@
 <script setup>
-import { computed, ref, watch } from 'vue';
+import { computed, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import GameStage from '../components/GameStage.vue';
+import GameLayout from '../components/GameLayout.vue';
 import MatchActions from '../components/MatchActions.vue';
 import PlayerHud from '../components/PlayerHud.vue';
 import ResultCard from '../components/ResultCard.vue';
-import TouchControls from '../components/TouchControls.vue';
 import { useKeyboard } from '../composables/useKeyboard';
 import { useOnlineMatch } from '../composables/useOnlineMatch';
 import { realtime } from '../lib/echo';
@@ -23,8 +22,6 @@ const { status, error, result, countdown, me, opponent, opp, stats, game, frame 
 
 useKeyboard(() => game.value);
 
-// On a touch screen the board's box matches the canvas (see GameStage), and the buttons take the height left over.
-const boardAspect = ref(null);
 // On touch screens the actions sit under the HOLD panel, leaving the bottom of the screen to the board and buttons.
 const touch = window.matchMedia('(pointer: coarse)').matches;
 const active = computed(() => status.value === 'playing' || status.value === 'countdown');
@@ -42,20 +39,23 @@ watch(status, (value) => {
 </script>
 
 <template>
-    <div class="relative pointer-coarse:flex pointer-coarse:min-h-0 pointer-coarse:flex-1 pointer-coarse:flex-col" :data-status="status" data-testid="match-view">
+    <div class="pointer-coarse:flex pointer-coarse:min-h-0 pointer-coarse:flex-1 pointer-coarse:flex-col" :data-status="status" data-testid="match-view">
         <p v-if="status === 'loading'" class="py-20 text-center text-slate-400">Loading match…</p>
         <p v-else-if="status === 'error'" class="py-20 text-center text-red-400">{{ error }}</p>
 
-        <template v-else-if="me && opponent">
-            <p
-                v-if="realtime.state !== 'connected' && ['countdown', 'playing'].includes(status)"
-                class="mb-3 shrink-0 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-2 text-center text-sm text-amber-200"
-                role="status"
-                data-testid="realtime-warning"
-            >
-                Reconnecting to the live server… Your pieces are still being saved, but your opponent's board is paused.
-            </p>
-            <div class="mb-3 flex shrink-0 flex-wrap items-end justify-between gap-x-2 gap-y-1 pointer-coarse:mb-2">
+        <GameLayout v-else-if="me && opponent" :frame="frame" :game="game" :playing="status === 'playing'" :countdown="status === 'countdown' ? countdown : null">
+            <template #header>
+                <p
+                    v-if="realtime.state !== 'connected' && ['countdown', 'playing'].includes(status)"
+                    class="mb-3 shrink-0 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-2 text-center text-sm text-amber-200"
+                    role="status"
+                    data-testid="realtime-warning"
+                >
+                    Reconnecting to the live server… Your pieces are still being saved, but your opponent's board is paused.
+                </p>
+            </template>
+
+            <template #hud>
                 <PlayerHud :name="me.user.name" :rating="me.rating_before" :score="stats.score" :lines="stats.lines" :sent="stats.sent" />
                 <PlayerHud
                     :name="opponent.user.name"
@@ -67,18 +67,13 @@ watch(status, (value) => {
                     :bot="opponent.user.is_bot"
                     align="right"
                 />
-            </div>
+            </template>
 
-            <div class="relative pointer-coarse:mb-2 pointer-coarse:min-h-0" :style="{ aspectRatio: boardAspect }">
-                <GameStage :frame="frame" fit @aspect="boardAspect = $event">
-                    <template v-if="touch && active" #under-hold>
-                        <MatchActions stacked v-bind="actionProps" @claim="online.claim()" @forfeit="online.forfeit()" />
-                    </template>
-                </GameStage>
+            <template v-if="touch && active" #under-hold>
+                <MatchActions stacked v-bind="actionProps" @claim="online.claim()" @forfeit="online.forfeit()" />
+            </template>
 
-                <div v-if="status === 'countdown'" class="pointer-events-none absolute inset-0 grid place-items-center">
-                    <span class="text-8xl font-black text-white drop-shadow-[0_0_30px_rgba(34,211,238,0.6)]" data-testid="countdown">{{ countdown }}</span>
-                </div>
+            <template #overlay>
                 <div v-if="status === 'waiting'" class="pointer-events-none absolute inset-0 grid place-items-center">
                     <span class="rounded-lg bg-slate-900/90 px-4 py-2 text-slate-300">Topped out — confirming result…</span>
                 </div>
@@ -91,18 +86,11 @@ watch(status, (value) => {
                         </div>
                     </ResultCard>
                 </div>
-            </div>
+            </template>
 
-            <!-- Kept in place, hidden, outside play: the board does not jump when the buttons come and go. -->
-            <TouchControls :class="{ invisible: status !== 'playing' }" @press="game?.press($event)" @release="game?.release($event)" />
-
-            <MatchActions
-                v-if="!touch && active"
-                class="mt-4 shrink-0"
-                v-bind="actionProps"
-                @claim="online.claim()"
-                @forfeit="online.forfeit()"
-            />
-        </template>
+            <template v-if="!touch && active" #footer>
+                <MatchActions class="mt-4 shrink-0" v-bind="actionProps" @claim="online.claim()" @forfeit="online.forfeit()" />
+            </template>
+        </GameLayout>
     </div>
 </template>
